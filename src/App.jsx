@@ -1,3 +1,4 @@
+import Requests from './pages/Requests'
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
@@ -35,7 +36,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/browse" element={user ? <Browse user={user} /> : <Navigate to="/login" replace />} />
         <Route path="/watch/:id" element={user ? <Watch /> : <Navigate to="/login" replace />} />
-        <Route path="/requests" element={user ? <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center"><p>Requests — Phase 4</p></div> : <Navigate to="/login" replace />} />
+        <Route path="/requests" element={user ? <Requests user={user} /> : <Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
