@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const BASE_URL = 'https://api.themoviedb.org/3'
@@ -25,8 +26,75 @@ function VideoPlayer({ videoId }) {
     </div>
   )
 }
+function DownloadButton({ movieId, title, posterUrl, user }) {
+  const [status, setStatus] = useState('idle') // idle | selecting | downloading | done
+  const [quality, setQuality] = useState('720p')
 
-export default function Watch() {
+  const handleDownload = async () => {
+    if (status === 'selecting') {
+      setStatus('downloading')
+      // Simulate download progress
+      setTimeout(async () => {
+        const { error } = await supabase.from('downloads').upsert({
+          user_id: user.id,
+          tmdb_id: movieId,
+          title,
+          poster_url: posterUrl,
+          quality,
+          status: 'completed',
+        })
+        if (!error) setStatus('done')
+        else setStatus('idle')
+      }, 2000)
+    } else if (status === 'idle') {
+      setStatus('selecting')
+    }
+  }
+
+  if (status === 'done') return (
+    <div className="flex items-center gap-2 text-green-400 text-sm mt-4">
+      <span>✓</span>
+      <span>Downloaded in {quality} — available in your Downloads</span>
+    </div>
+  )
+
+  return (
+    <div className="mt-4">
+      {status === 'selecting' && (
+        <div className="flex gap-2 mb-3">
+          {['480p', '720p', '1080p'].map(q => (
+            <button key={q} onClick={() => setQuality(q)}
+              className={`px-3 py-1 rounded-lg text-sm font-medium border transition ${
+                quality === q
+                  ? 'bg-purple-600 border-purple-600 text-white'
+                  : 'bg-gray-800 border-gray-600 text-gray-300 hover:border-purple-500'
+              }`}>
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
+      <button
+        onClick={handleDownload}
+        disabled={status === 'downloading'}
+        className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 hover:border-purple-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50"
+      >
+        {status === 'downloading' ? (
+          <>
+            <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+            Downloading {quality}...
+          </>
+        ) : status === 'selecting' ? (
+          <>⬇ Confirm Download in {quality}</>
+        ) : (
+          <>⬇ Download</>
+        )}
+      </button>
+    </div>
+  )
+}
+// Should be:
+export default function Watch({ user }) {
   const { id } = useParams()
   const navigate = useNavigate()
   const [movie, setMovie] = useState(null)
@@ -98,6 +166,7 @@ export default function Watch() {
           {backdropUrl && <img src={backdropUrl} alt={movie.title} className="w-full h-full object-cover opacity-40" />}
           <div className="absolute inset-0 flex items-center justify-center flex-col gap-4">
             <p className="text-gray-300 text-lg">Video not available yet</p>
+            <button onClick={() => navigate('/downloads')} className="text-gray-300 hover:text-white text-sm">Downloads</button>
             <button onClick={() => navigate('/requests')} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold">
               Request this movie
             </button>
@@ -119,6 +188,7 @@ export default function Watch() {
               ))}
             </div>
             <p className="text-gray-300 leading-relaxed">{movie.overview}</p>
+            <DownloadButton movieId={Number(id)} title={movie.title} posterUrl={posterUrl} user={user} />
           </div>
         </div>
 

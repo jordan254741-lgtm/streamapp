@@ -1,3 +1,4 @@
+import Downloads from './pages/Downloads'
 import Requests from './pages/Requests'
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
@@ -31,11 +32,12 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/downloads" element={user ? <Downloads user={user} /> : <Navigate to="/login" replace />} />
         <Route path="/" element={<Navigate to={user ? '/browse' : '/login'} replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/browse" element={user ? <Browse user={user} /> : <Navigate to="/login" replace />} />
-        <Route path="/watch/:id" element={user ? <Watch /> : <Navigate to="/login" replace />} />
+        <Route path="/watch/:id" element={user ? <Watch user={user} /> : <Navigate to="/login" replace />} />
         <Route path="/requests" element={user ? <Requests user={user} /> : <Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
