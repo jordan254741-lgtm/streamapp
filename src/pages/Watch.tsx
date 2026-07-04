@@ -101,8 +101,11 @@ export default function Watch({ user }: WatchProps) {
       }
 
       setSources(embedSources)
-      if (embedSources.length > 0 && !activeSource) {
-        setActiveSource(embedSources[0].key)
+      if (embedSources.length > 0) {
+        const stillExists = embedSources.some(s => s.key === activeSource)
+        if (!stillExists) {
+          setActiveSource(embedSources[0].key)
+        }
       }
     } catch (err) {
       console.error('Failed to load:', err)
@@ -240,7 +243,7 @@ export default function Watch({ user }: WatchProps) {
                   ref={iframeRef}
                   src={activeSourceData.embedUrl}
                   className="w-full h-full border-0"
-                  sandbox="allow-scripts allow-same-origin"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                   referrerPolicy="no-referrer"
                   allow="autoplay; fullscreen"
                   allowFullScreen
