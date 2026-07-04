@@ -1,0 +1,5 @@
+[functions]
+enabled = true
+
+[functions.movie-api]
+verify_jwt = false
