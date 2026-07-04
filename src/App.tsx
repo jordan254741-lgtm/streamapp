@@ -76,6 +76,10 @@ function AppContent() {
             element={user ? <Watch user={user} /> : <Navigate to="/login" replace />}
           />
           <Route
+            path="/watch/:type/:id"
+            element={user ? <Watch user={user} /> : <Navigate to="/login" replace />}
+          />
+          <Route
             path="/downloads"
             element={user ? <Downloads user={user} /> : <Navigate to="/login" replace />}
           />

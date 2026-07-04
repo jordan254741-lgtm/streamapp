@@ -1,29 +1,24 @@
 import type { User } from '@supabase/supabase-js'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { FormEvent, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import ErrorBoundary from '../components/ErrorBoundary'
 import Layout from '../components/Layout'
+import ContentRow from '../components/movies/ContentRow'
 import VirtualMovieGrid from '../components/movies/VirtualMovieGrid'
 import {
   fetchDiscoverMovies,
   fetchDiscoverTv,
+  fetchNowPlaying,
   fetchPopularMovies,
   fetchPopularTv,
+  fetchTopRated,
   fetchTrending,
   searchMovies,
   searchTv,
 } from '../lib/movie-api'
 import type { Genre } from '../types'
-
-type ContentType = 'movies' | 'series' | 'trending'
-
-const TABS: { key: ContentType; label: string }[] = [
-  { key: 'movies', label: 'Movies' },
-  { key: 'series', label: 'Series' },
-  { key: 'trending', label: 'Trending' },
-]
 
 const MOVIE_GENRES: Genre[] = [
   { id: null, name: 'All' },
@@ -55,35 +50,63 @@ interface BrowseProps {
 
 export default function Browse({ user }: BrowseProps) {
   const navigate = useNavigate()
-  const [contentType, setContentType] = useState<ContentType>('movies')
+  const [view, setView] = useState<'home' | 'browse'>('home')
+  const [browseType, setBrowseType] = useState<'movies' | 'series'>('movies')
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [activeGenre, setActiveGenre] = useState<number | null>(null)
 
-  const genres = contentType === 'series' ? TV_GENRES : MOVIE_GENRES
+  const genres = browseType === 'series' ? TV_GENRES : MOVIE_GENRES
 
-  const queryKey = ['content', contentType, search, activeGenre] as const
+  const isSearching = !!search
+
+  const trendingQuery = useQuery({
+    queryKey: ['home', 'trending'],
+    queryFn: () => fetchTrending(1),
+    staleTime: 10 * 60 * 1000,
+    retry: 2,
+  })
+
+  const latestQuery = useQuery({
+    queryKey: ['home', 'latest'],
+    queryFn: () => fetchNowPlaying(1),
+    staleTime: 10 * 60 * 1000,
+    retry: 2,
+  })
+
+  const topRatedQuery = useQuery({
+    queryKey: ['home', 'topRated'],
+    queryFn: () => fetchTopRated(1),
+    staleTime: 10 * 60 * 1000,
+    retry: 2,
+  })
+
+  const popularTvQuery = useQuery({
+    queryKey: ['home', 'popularTv'],
+    queryFn: () => fetchPopularTv(1),
+    staleTime: 10 * 60 * 1000,
+    retry: 2,
+  })
+
+  const browseQueryKey = ['browse', browseType, search, activeGenre] as const
 
   const {
-    data,
-    isLoading,
-    isFetchingNextPage,
-    hasNextPage,
-    fetchNextPage,
-    error,
+    data: browseData,
+    isLoading: browseLoading,
+    isFetchingNextPage: browseFetchingNext,
+    hasNextPage: browseHasNext,
+    fetchNextPage: browseFetchNext,
+    error: browseError,
   } = useInfiniteQuery({
-    queryKey,
+    queryKey: browseQueryKey,
     queryFn: async ({ pageParam = 1 }) => {
-      if (contentType === 'trending') {
-        return fetchTrending(pageParam)
-      }
       if (search) {
-        return contentType === 'series' ? searchTv(search, pageParam) : searchMovies(search, pageParam)
+        return browseType === 'series' ? searchTv(search, pageParam) : searchMovies(search, pageParam)
       }
       if (activeGenre) {
-        return contentType === 'series' ? fetchDiscoverTv(activeGenre, pageParam) : fetchDiscoverMovies(activeGenre, pageParam)
+        return browseType === 'series' ? fetchDiscoverTv(activeGenre, pageParam) : fetchDiscoverMovies(activeGenre, pageParam)
       }
-      return contentType === 'series' ? fetchPopularTv(pageParam) : fetchPopularMovies(pageParam)
+      return browseType === 'series' ? fetchPopularTv(pageParam) : fetchPopularMovies(pageParam)
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage, pages) => {
@@ -92,51 +115,44 @@ export default function Browse({ user }: BrowseProps) {
     },
     staleTime: 5 * 60 * 1000,
     retry: 3,
+    enabled: view === 'browse' || isSearching,
   })
 
-  const items = data?.pages.flatMap(p => p.results) || []
-  const errorMessage = error instanceof Error ? error.message : null
+  const browseItems = browseData?.pages.flatMap(p => p.results) || []
+  const browseErrorMsg = browseError instanceof Error ? browseError.message : null
+
+  const navigateToContent = (movie: { id: number; media_type?: string }) => {
+    const mediaType = movie.media_type || 'movie'
+    if (mediaType === 'tv') {
+      navigate(`/watch/tv/${movie.id}`)
+    } else {
+      navigate(`/watch/${movie.id}`)
+    }
+  }
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault()
     setSearch(searchInput)
+    if (!searchInput) {
+      setView('home')
+    } else {
+      setView('browse')
+    }
     setActiveGenre(null)
   }
 
-  const handleTabChange = (tab: ContentType) => {
-    setContentType(tab)
+  const switchToBrowse = (type: 'movies' | 'series') => {
+    setBrowseType(type)
+    setView('browse')
     setSearch('')
     setSearchInput('')
     setActiveGenre(null)
   }
 
-  const heading = useMemo(() => {
-    if (search) return `Results for "${search}"`
-    if (activeGenre) return genres.find(g => g.id === activeGenre)?.name || ''
-    if (contentType === 'trending') return 'Trending Today'
-    return contentType === 'series' ? 'Popular Series' : 'Popular Movies'
-  }, [search, activeGenre, contentType, genres])
-
-  const searchPlaceholder = contentType === 'series' ? 'Search for a series...' : 'Search for a movie...'
+  const showHome = view === 'home' && !isSearching
 
   return (
     <Layout user={user} maxWidth="3xl">
-      <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-800">
-        {TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => handleTabChange(tab.key)}
-            className={`px-4 sm:px-5 py-2.5 sm:py-3 text-sm font-medium transition relative ${
-              contentType === tab.key
-                ? 'text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-purple-500'
-                : 'text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       <form onSubmit={handleSearch} className="flex gap-2 sm:gap-3 mb-4 sm:mb-6">
         <div className="relative flex-1">
           <svg
@@ -147,7 +163,7 @@ export default function Browse({ user }: BrowseProps) {
           </svg>
           <input
             type="text"
-            placeholder={searchPlaceholder}
+            placeholder="Search movies & series..."
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             className="w-full bg-gray-800 text-white placeholder-gray-500 border border-gray-700 rounded-lg pl-10 pr-4 py-2.5 sm:py-3 outline-none focus:border-gray-400 text-sm sm:text-base"
@@ -159,82 +175,185 @@ export default function Browse({ user }: BrowseProps) {
         >
           Search
         </button>
-        {(search || activeGenre) && (
-          <button
-            type="button"
-            onClick={() => { setSearch(''); setSearchInput(''); setActiveGenre(null) }}
-            className="bg-gray-700 hover:bg-gray-600 text-white px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm"
-          >
-            Clear
-          </button>
-        )}
       </form>
 
-      {contentType !== 'trending' && (
-        <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-thin">
-          {genres.map(genre => (
-            <button
-              key={genre.id}
-              onClick={() => { setActiveGenre(genre.id); setSearch(''); setSearchInput('') }}
-              className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition ${
-                activeGenre === genre.id || (genre.id === null && !activeGenre && !search)
-                  ? 'bg-purple-100 text-purple-900'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              {genre.name}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <h2 className="text-lg sm:text-xl font-bold mb-4">{heading}</h2>
-
-      {isLoading && (
-        <div className="flex justify-center py-20">
-          <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
-      {errorMessage && (
-        <div className="text-center py-20">
-          <p className="text-red-400 mb-2">{errorMessage}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="text-sm text-gray-400 hover:text-white underline"
-          >
-            Try again
-          </button>
-        </div>
-      )}
-      {!isLoading && !errorMessage && items.length === 0 && (
-        <div className="text-center py-20">
-          <p className="text-gray-400 text-lg">Nothing found.</p>
-          {(search || activeGenre) && (
-            <button
-              onClick={() => { setSearch(''); setSearchInput(''); setActiveGenre(null) }}
-              className="mt-4 text-sm text-purple-400 hover:underline"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-      )}
-      {!isLoading && !errorMessage && items.length > 0 && (
+      {showHome && (
         <>
           <ErrorBoundary>
-            <VirtualMovieGrid
-              movies={items}
-              onMovieClick={(movie) => navigate(`/watch/${movie.id}`)}
-              onLoadMore={hasNextPage ? () => fetchNextPage() : undefined}
-            />
+            {trendingQuery.data && (
+              <ContentRow title="Trending Now" items={trendingQuery.data.results.slice(0, 20)} onItemClick={navigateToContent} />
+            )}
           </ErrorBoundary>
-          {isFetchingNextPage && (
-            <div className="flex justify-center py-8">
-              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+
+          <ErrorBoundary>
+            {latestQuery.data && (
+              <ContentRow title="Latest Releases" items={latestQuery.data.results.slice(0, 20)} onItemClick={navigateToContent} />
+            )}
+          </ErrorBoundary>
+
+          <ErrorBoundary>
+            {topRatedQuery.data && (
+              <ContentRow title="Top Rated" items={topRatedQuery.data.results.slice(0, 20)} onItemClick={navigateToContent} />
+            )}
+          </ErrorBoundary>
+
+          <ErrorBoundary>
+            {popularTvQuery.data && (
+              <ContentRow title="Popular Series" items={popularTvQuery.data.results.slice(0, 20)} onItemClick={navigateToContent} />
+            )}
+          </ErrorBoundary>
+
+          <div className="border-t border-gray-800 pt-6 sm:pt-8 mt-6 sm:mt-8">
+            <div className="flex items-center gap-3 mb-6">
+              <h2 className="text-lg sm:text-xl font-bold">Browse All</h2>
+              <div className="flex gap-1 bg-gray-800 rounded-lg p-0.5">
+                <button
+                  onClick={() => switchToBrowse('movies')}
+                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition ${
+                    browseType === 'movies'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Movies
+                </button>
+                <button
+                  onClick={() => switchToBrowse('series')}
+                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition ${
+                    browseType === 'series'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Series
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-thin">
+              {genres.map(genre => (
+                <button
+                  key={genre.id}
+                  onClick={() => { setActiveGenre(genre.id); setSearch(''); setSearchInput('') }}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition ${
+                    activeGenre === genre.id || (genre.id === null && !activeGenre && !search)
+                      ? 'bg-purple-100 text-purple-900'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  {genre.name}
+                </button>
+              ))}
+            </div>
+
+            {browseLoading && (
+              <div className="flex justify-center py-20">
+                <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+            {browseErrorMsg && (
+              <div className="text-center py-20">
+                <p className="text-red-400 mb-2">{browseErrorMsg}</p>
+                <button onClick={() => window.location.reload()} className="text-sm text-gray-400 hover:text-white underline">Try again</button>
+              </div>
+            )}
+            {!browseLoading && !browseErrorMsg && browseItems.length === 0 && (
+              <div className="text-center py-20">
+                <p className="text-gray-400 text-lg">Nothing found.</p>
+                {(search || activeGenre) && (
+                  <button onClick={() => { setSearch(''); setSearchInput(''); setActiveGenre(null) }} className="mt-4 text-sm text-purple-400 hover:underline">Clear filters</button>
+                )}
+              </div>
+            )}
+            {!browseLoading && !browseErrorMsg && browseItems.length > 0 && (
+              <>
+                <VirtualMovieGrid
+                  movies={browseItems}
+                  onMovieClick={(movie) => navigateToContent(movie)}
+                  onLoadMore={browseHasNext ? () => browseFetchNext() : undefined}
+                />
+                {browseFetchingNext && (
+                  <div className="flex justify-center py-8">
+                    <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+                {!browseHasNext && browseItems.length > 0 && (
+                  <p className="text-center text-gray-500 text-sm py-8">You've reached the end</p>
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )}
+
+      {!showHome && (
+        <>
+          <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-800">
+            <button
+              onClick={() => { setBrowseType('movies'); setSearch(''); setSearchInput(''); setActiveGenre(null); setView('home') }}
+              className="px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-medium text-gray-500 hover:text-gray-300 transition"
+            >
+              ← Back to Home
+            </button>
+          </div>
+
+          <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-thin">
+            {genres.map(genre => (
+              <button
+                key={genre.id}
+                onClick={() => { setActiveGenre(genre.id); setSearch(''); setSearchInput('') }}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition ${
+                  activeGenre === genre.id || (genre.id === null && !activeGenre && !search)
+                    ? 'bg-purple-100 text-purple-900'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {genre.name}
+              </button>
+            ))}
+          </div>
+
+          <h2 className="text-lg sm:text-xl font-bold mb-4">
+            {search ? `Results for "${search}"` : activeGenre ? genres.find(g => g.id === activeGenre)?.name || '' : ''}
+          </h2>
+
+          {browseLoading && (
+            <div className="flex justify-center py-20">
+              <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
             </div>
           )}
-          {!hasNextPage && items.length > 0 && (
-            <p className="text-center text-gray-500 text-sm py-8">You've reached the end</p>
+          {browseErrorMsg && (
+            <div className="text-center py-20">
+              <p className="text-red-400 mb-2">{browseErrorMsg}</p>
+              <button onClick={() => window.location.reload()} className="text-sm text-gray-400 hover:text-white underline">Try again</button>
+            </div>
+          )}
+          {!browseLoading && !browseErrorMsg && browseItems.length === 0 && (
+            <div className="text-center py-20">
+              <p className="text-gray-400 text-lg">Nothing found.</p>
+              {(search || activeGenre) && (
+                <button onClick={() => { setSearch(''); setSearchInput(''); setActiveGenre(null); setView('home') }} className="mt-4 text-sm text-purple-400 hover:underline">Clear filters</button>
+              )}
+            </div>
+          )}
+          {!browseLoading && !browseErrorMsg && browseItems.length > 0 && (
+            <>
+              <ErrorBoundary>
+                <VirtualMovieGrid
+                  movies={browseItems}
+                  onMovieClick={(movie) => navigateToContent(movie)}
+                  onLoadMore={browseHasNext ? () => browseFetchNext() : undefined}
+                />
+              </ErrorBoundary>
+              {browseFetchingNext && (
+                <div className="flex justify-center py-8">
+                  <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+              {!browseHasNext && browseItems.length > 0 && (
+                <p className="text-center text-gray-500 text-sm py-8">You've reached the end</p>
+              )}
+            </>
           )}
         </>
       )}

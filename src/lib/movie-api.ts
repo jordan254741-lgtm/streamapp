@@ -1,3 +1,5 @@
+import type { MediaType } from '../types'
+
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_BASE = import.meta.env.VITE_TMDB_BASE_URL || 'https://api.themoviedb.org/3'
 const REQUEST_TIMEOUT = 10000
@@ -24,7 +26,7 @@ async function tmdbFetch<T>(path: string): Promise<T> {
   throw new Error('Request failed')
 }
 
-const EMBED_SOURCES = [
+const MOVIE_EMBED_SOURCES = [
   {
     key: 'vidsrc',
     name: 'VidSrc',
@@ -42,11 +44,30 @@ const EMBED_SOURCES = [
   },
 ]
 
-export function getEmbedSources(tmdbId: number) {
-  return EMBED_SOURCES.map(s => ({
-    ...s,
+const TV_EMBED_SOURCES = [
+  {
+    key: 'vidsrc',
+    name: 'VidSrc',
+    url: (tmdb: number) => `https://vidsrc.to/embed/tv/${tmdb}`,
+  },
+  {
+    key: '2embed',
+    name: '2Embed',
+    url: (tmdb: number) => `https://www.2embed.cc/embedtv/${tmdb}`,
+  },
+]
+
+export function getEmbedSources(tmdbId: number, mediaType: MediaType = 'movie'): Array<{ key: string; name: string; embedUrl: string }> {
+  const sources = mediaType === 'tv' ? TV_EMBED_SOURCES : MOVIE_EMBED_SOURCES
+  return sources.map(s => ({
+    key: s.key,
+    name: s.name,
     embedUrl: s.url(tmdbId),
   }))
+}
+
+export function getTvEmbedSources(tmdbId: number) {
+  return getEmbedSources(tmdbId, 'tv')
 }
 
 export async function fetchMovieBoxSource(title: string, year: string): Promise<string | null> {
@@ -66,6 +87,8 @@ export async function fetchMovieBoxSource(title: string, year: string): Promise<
   }
 }
 
+
+
 function normalizeTvShow(item: TvResult): MovieResult {
   return {
     id: item.id,
@@ -77,6 +100,7 @@ function normalizeTvShow(item: TvResult): MovieResult {
     vote_count: item.vote_count,
     overview: item.overview,
     genre_ids: item.genre_ids,
+    media_type: 'tv' as MediaType,
   }
 }
 
@@ -91,6 +115,7 @@ function normalizeTrendingItem(item: TrendingResult): MovieResult {
     vote_count: item.vote_count,
     overview: item.overview,
     genre_ids: item.genre_ids,
+    media_type: (item.media_type === 'tv' ? 'tv' : 'movie') as MediaType,
   }
 }
 
@@ -136,6 +161,24 @@ export async function fetchMovieDetails(id: number) {
   )
 }
 
+export async function fetchTvDetails(id: number) {
+  return tmdbFetch<TvDetailsResponse>(
+    `/tv/${id}?append_to_response=credits,similar,external_ids,videos`,
+  )
+}
+
+export async function fetchNowPlaying(page = 1) {
+  return tmdbFetch<MovieApiResponse>(`/movie/now_playing?page=${page}`)
+}
+
+export async function fetchTopRated(page = 1) {
+  return tmdbFetch<MovieApiResponse>(`/movie/top_rated?page=${page}`)
+}
+
+export async function fetchUpcoming(page = 1) {
+  return tmdbFetch<MovieApiResponse>(`/movie/upcoming?page=${page}`)
+}
+
 interface MovieApiResponse {
   results: MovieResult[]
   total_pages: number
@@ -151,6 +194,7 @@ export interface MovieResult {
   vote_count: number
   overview: string
   genre_ids: number[]
+  media_type?: MediaType
 }
 
 export interface MovieDetailsResponse {
@@ -162,6 +206,37 @@ export interface MovieDetailsResponse {
   release_date: string
   vote_average: number
   runtime: number
+  genres: Array<{ id: number; name: string }>
+  credits: {
+    cast: Array<{
+      id: number
+      name: string
+      character: string
+      profile_path: string | null
+    }>
+  }
+  similar: {
+    results: MovieResult[]
+  }
+  external_ids: {
+    imdb_id: string | null
+    facebook_id: string | null
+  }
+  videos: {
+    results: TmdbVideo[]
+  }
+}
+
+export interface TvDetailsResponse {
+  id: number
+  name: string
+  overview: string
+  poster_path: string | null
+  backdrop_path: string | null
+  first_air_date: string
+  vote_average: number
+  number_of_seasons: number
+  number_of_episodes: number
   genres: Array<{ id: number; name: string }>
   credits: {
     cast: Array<{
