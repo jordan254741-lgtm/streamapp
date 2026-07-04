@@ -130,9 +130,38 @@ export default function Watch({ user }: WatchProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-warm-50 flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-crimson border-t-transparent rounded-full animate-spin" />
-      </div>
+      <Layout user={user} maxWidth="3xl" showBack backTo="/browse" backLabel="Browse">
+        <div className="animate-pulse">
+          <div className="aspect-video bg-warm-100 rounded-lg mb-6" />
+          <div className="flex gap-6">
+            <div className="hidden sm:block w-28 sm:w-32 md:w-40 aspect-[2/3] bg-warm-100 rounded-xl flex-shrink-0" />
+            <div className="flex-1 space-y-3">
+              <div className="h-8 bg-warm-100 rounded w-3/4" />
+              <div className="flex gap-2">
+                <div className="h-5 w-16 bg-warm-100 rounded" />
+                <div className="h-5 w-20 bg-warm-100 rounded" />
+                <div className="h-5 w-24 bg-warm-100 rounded" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 bg-warm-100 rounded" />
+                <div className="h-3 bg-warm-100 rounded w-5/6" />
+                <div className="h-3 bg-warm-100 rounded w-2/3" />
+              </div>
+            </div>
+          </div>
+          <div className="mt-8">
+            <div className="h-6 w-16 bg-warm-100 rounded mb-4" />
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 sm:gap-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="text-center">
+                  <div className="aspect-[2/3] bg-warm-100 rounded-lg mb-1" />
+                  <div className="h-3 bg-warm-100 rounded w-3/4 mx-auto" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Layout>
     )
   }
 

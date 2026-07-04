@@ -196,8 +196,26 @@ export default function Requests({ user }: RequestsProps) {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="w-10 h-10 border-4 border-crimson border-t-transparent rounded-full animate-spin" />
+        <div className="flex flex-col gap-3 animate-pulse">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="bg-white border border-warm-200 rounded-xl p-4 sm:p-5 flex items-center gap-3 sm:gap-5">
+              <div className="w-6 sm:w-8 text-center flex-shrink-0">
+                <div className="h-6 w-6 bg-warm-100 rounded mx-auto" />
+              </div>
+              <div className="flex-1 min-w-0 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="h-5 w-48 bg-warm-100 rounded" />
+                  <div className="h-5 w-16 bg-warm-100 rounded" />
+                  <div className="h-5 w-20 bg-warm-100 rounded" />
+                </div>
+                <div className="h-3 w-32 bg-warm-100 rounded" />
+              </div>
+              <div className="flex flex-col items-center px-3 sm:px-4 py-2 sm:py-3">
+                <div className="h-4 w-4 bg-warm-100 rounded mb-1" />
+                <div className="h-4 w-6 bg-warm-100 rounded" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : requests.length === 0 ? (
         <div className="text-center py-20">

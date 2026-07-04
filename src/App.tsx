@@ -42,7 +42,10 @@ function AppContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-warm-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-crimson border-t-transparent rounded-full animate-spin" />
+        <div className="text-center animate-pulse">
+          <h1 className="text-4xl font-bold text-crimson mb-3">StreamApp</h1>
+          <div className="w-32 h-1.5 bg-warm-200 rounded-full mx-auto" />
+        </div>
       </div>
     )
   }
