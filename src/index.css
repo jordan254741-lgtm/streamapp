@@ -1,7 +1,36 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --warm-50: #FCF6F5;
+  --warm-100: #F5EDEA;
+  --warm-200: #EDE6E4;
+  --warm-300: #E0D5D3;
+  --warm-400: #C4B5B3;
+  --warm-500: #9B8B89;
+  --warm-600: #7A6868;
+  --warm-700: #5E4E4E;
+  --warm-800: #3D3333;
+  --warm-900: #241E1E;
+  --crimson: #990011;
+  --crimson-hover: #7A000E;
+}
+
+html.dark {
+  --warm-50: #030712;
+  --warm-100: #111827;
+  --warm-200: #1f2937;
+  --warm-300: #374151;
+  --warm-400: #6B7280;
+  --warm-500: #9CA3AF;
+  --warm-600: #D1D5DB;
+  --warm-700: #E5E7EB;
+  --warm-800: #F3F4F6;
+  --warm-900: #ffffff;
+  --crimson: #EF4444;
+  --crimson-hover: #DC2626;
+}
 
 @layer utilities {
   .scrollbar-thin {
@@ -24,4 +53,21 @@
 html {
   scrollbar-width: thin;
   scrollbar-color: #374151 transparent;
+}
+
+html.dark .scrollbar-thin {
+  scrollbar-color: #4B5563 transparent;
+}
+
+html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #4B5563;
+}
+
+html.dark {
+  scrollbar-color: #4B5563 transparent;
+  color-scheme: dark;
+}
+
+html {
+  color-scheme: light;
 }

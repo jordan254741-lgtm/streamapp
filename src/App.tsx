@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import ErrorBoundary from './components/ErrorBoundary'
+import { ThemeProvider } from './contexts/ThemeContext'
 import { validateEnv } from './lib/env'
 import { queryClient } from './lib/query-client'
 import { supabase } from './lib/supabase'
@@ -100,7 +101,9 @@ function AppContent() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </QueryClientProvider>
   )
 }
