@@ -22,6 +22,7 @@ function CellComponent({
   columnIndex,
   rowIndex,
   style,
+  ariaAttributes,
   movies,
   columns,
   gap,
@@ -30,12 +31,13 @@ function CellComponent({
   columnIndex: number
   rowIndex: number
   style: React.CSSProperties
+  ariaAttributes: { 'aria-colindex': number; role: 'gridcell' }
 } & CellExtraProps) {
   const index = rowIndex * columns + columnIndex
   if (index >= movies.length) return null
   const movie = movies[index]
   return (
-    <div style={{ ...style, padding: `${gap / 2}px` }}>
+    <div style={{ ...style, padding: `${gap / 2}px` }} {...ariaAttributes}>
       <MovieCard movie={movie} onClick={onMovieClick ? () => onMovieClick(movie) : undefined} />
     </div>
   )
@@ -52,7 +54,6 @@ function getColumnCount(width: number): number {
 
 export default function VirtualMovieGrid({ movies, gap = 16, onMovieClick, onLoadMore }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const loadingRef = useRef(false)
   const [width, setWidth] = useState(0)
   const [columns, setColumns] = useState(6)
 
@@ -81,25 +82,20 @@ export default function VirtualMovieGrid({ movies, gap = 16, onMovieClick, onLoa
   }, [width, columns, gap])
 
   const rowCount = Math.ceil(movies.length / columns)
-  const gridHeight = typeof window !== 'undefined' ? window.innerHeight - 200 : 600
+  const gridHeight = typeof window !== 'undefined' ? window.innerHeight - 300 : 600
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      if (!onLoadMore || loadingRef.current) return
+      if (!onLoadMore) return
       const scrollOffset = e.currentTarget.scrollTop
       const totalHeight = rowCount * (cardHeight + gap)
       const visibleHeight = e.currentTarget.clientHeight
       if (scrollOffset + visibleHeight >= totalHeight - visibleHeight * 0.5) {
-        loadingRef.current = true
         onLoadMore()
       }
     },
     [onLoadMore, rowCount, cardHeight, gap],
   )
-
-  useEffect(() => {
-    loadingRef.current = false
-  }, [movies.length])
 
   const cellProps = useMemo<CellExtraProps>(
     () => ({ movies, columns, gap, onMovieClick }),
