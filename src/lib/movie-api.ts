@@ -26,49 +26,7 @@ async function tmdbFetch<T>(path: string): Promise<T> {
   throw new Error('Request failed')
 }
 
-const MOVIE_EMBED_SOURCES = [
-  {
-    key: 'vidsrc',
-    name: 'VidSrc',
-    url: (tmdb: number) => `https://vidsrc.to/embed/movie/${tmdb}`,
-  },
-  {
-    key: 'moviesapi',
-    name: 'MoviesAPI',
-    url: (tmdb: number) => `https://moviesapi.to/movie/${tmdb}`,
-  },
-  {
-    key: '2embed',
-    name: '2Embed',
-    url: (tmdb: number) => `https://www.2embed.cc/embed/${tmdb}`,
-  },
-]
 
-const TV_EMBED_SOURCES = [
-  {
-    key: 'vidsrc',
-    name: 'VidSrc',
-    url: (tmdb: number) => `https://vidsrc.to/embed/tv/${tmdb}`,
-  },
-  {
-    key: '2embed',
-    name: '2Embed',
-    url: (tmdb: number) => `https://www.2embed.cc/embedtv/${tmdb}`,
-  },
-]
-
-export function getEmbedSources(tmdbId: number, mediaType: MediaType = 'movie'): Array<{ key: string; name: string; embedUrl: string }> {
-  const sources = mediaType === 'tv' ? TV_EMBED_SOURCES : MOVIE_EMBED_SOURCES
-  return sources.map(s => ({
-    key: s.key,
-    name: s.name,
-    embedUrl: s.url(tmdbId),
-  }))
-}
-
-export function getTvEmbedSources(tmdbId: number) {
-  return getEmbedSources(tmdbId, 'tv')
-}
 
 export async function fetchMovieBoxSource(title: string, year: string): Promise<string | null> {
   try {
