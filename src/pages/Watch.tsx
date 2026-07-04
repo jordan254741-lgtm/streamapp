@@ -243,7 +243,6 @@ export default function Watch({ user }: WatchProps) {
                   ref={iframeRef}
                   src={activeSourceData.embedUrl}
                   className="w-full h-full border-0"
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                   referrerPolicy="no-referrer"
                   allow="autoplay; fullscreen"
                   allowFullScreen
