@@ -29,7 +29,7 @@ export default function MovieCard({ movie, onClick }: MovieCardProps) {
   return (
     <div
       onClick={handleClick}
-      className="group cursor-pointer rounded-lg overflow-hidden bg-white border border-warm-200 hover:scale-105 hover:shadow-xl transition-all duration-200"
+      className="group cursor-pointer rounded-lg overflow-hidden bg-card border border-warm-200 hover:scale-105 hover:shadow-xl transition-all duration-200"
     >
       <div className="relative aspect-[2/3] overflow-hidden">
         <img src={posterUrl} alt={movie.title} className="w-full h-full object-cover" loading="lazy" />
@@ -38,16 +38,16 @@ export default function MovieCard({ movie, onClick }: MovieCardProps) {
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-crimson flex items-center justify-center mx-auto mb-2">
               <span className="text-white text-lg sm:text-xl ml-0.5">▶</span>
             </div>
-            <p className="text-white text-xs sm:text-sm font-medium">Watch Now</p>
+            <p className="text-white text-sm sm:text-base font-medium">Watch Now</p>
           </div>
         </div>
-        <div className="absolute top-2 right-2 bg-warm-900/80 text-yellow-400 text-xs font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
+        <div className="absolute top-2 right-2 bg-warm-900/80 text-yellow-400 text-xs sm:text-sm font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
           ★ {rating}
         </div>
       </div>
       <div className="p-2 sm:p-3">
-        <h3 className="text-warm-900 font-semibold text-xs sm:text-sm leading-tight line-clamp-2 mb-1">{movie.title}</h3>
-        <p className="text-warm-500 text-xs">{year}</p>
+        <h3 className="text-warm-900 font-semibold text-sm sm:text-base leading-tight line-clamp-2 mb-1">{movie.title}</h3>
+        <p className="text-warm-500 text-xs sm:text-sm">{year}</p>
       </div>
     </div>
   )

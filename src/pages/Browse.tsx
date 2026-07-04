@@ -154,7 +154,7 @@ export default function Browse({ user }: Props) {
               placeholder="Search movies & series..."
               value={query}
               onChange={e => setQuery(e.target.value)}
-              className="w-full sm:w-64 md:w-80 lg:w-96 bg-white border border-warm-200 text-warm-900 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:border-crimson focus:ring-1 focus:ring-crimson outline-none placeholder-warm-400 transition"
+              className="w-full sm:w-64 md:w-80 lg:w-96 bg-card border border-warm-200 text-warm-900 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:border-crimson focus:ring-1 focus:ring-crimson outline-none placeholder-warm-400 transition"
             />
             {query && (
               <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-warm-400 hover:text-crimson transition text-lg">×</button>
@@ -182,7 +182,7 @@ export default function Browse({ user }: Props) {
               <button
                 key={g.id}
                 onClick={() => setSelectedGenre(selectedGenre === g.id ? null : g.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${
+                className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition ${
                   selectedGenre === g.id
                     ? 'bg-crimson text-white'
                     : 'bg-warm-100 text-warm-600 hover:bg-warm-200 hover:text-warm-900'

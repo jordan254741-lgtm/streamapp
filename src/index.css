@@ -15,6 +15,7 @@
   --warm-900: #2D2020;
   --crimson: #990011;
   --crimson-hover: #7A000E;
+  --card: #ffffff;
 }
 
 html.dark {
@@ -30,6 +31,7 @@ html.dark {
   --warm-900: #F0F0F0;
   --crimson: #E04545;
   --crimson-hover: #CC3838;
+  --card: #1E1E1E;
 }
 
 *,

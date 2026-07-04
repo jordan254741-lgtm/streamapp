@@ -128,7 +128,7 @@ export default function Requests({ user }: RequestsProps) {
       )}
 
       {showForm && (
-        <div className="bg-white border border-warm-200 rounded-xl p-4 sm:p-6 mb-8">
+        <div className="bg-card border border-warm-200 rounded-xl p-4 sm:p-6 mb-8">
           <h2 className="text-lg font-semibold mb-4 text-warm-900">Request a Movie</h2>
 
           {duplicate && (
@@ -155,7 +155,7 @@ export default function Requests({ user }: RequestsProps) {
               <input
                 type="text" placeholder="e.g. The Dark Knight" value={form.title}
                 onChange={handleTitleChange}
-                className="w-full bg-white border border-warm-200 rounded-lg px-4 py-3 text-warm-900 placeholder-warm-400 outline-none focus:border-crimson transition"
+                className="w-full bg-card border border-warm-200 rounded-lg px-4 py-3 text-warm-900 placeholder-warm-400 outline-none focus:border-crimson transition"
                 required
               />
             </div>
@@ -166,7 +166,7 @@ export default function Requests({ user }: RequestsProps) {
                   type="number" placeholder="e.g. 2008" value={form.release_year}
                   onChange={e => setForm(f => ({ ...f, release_year: e.target.value }))}
                   min="1900" max="2026"
-                  className="w-full bg-white border border-warm-200 rounded-lg px-4 py-3 text-warm-900 placeholder-warm-400 outline-none focus:border-crimson transition"
+                  className="w-full bg-card border border-warm-200 rounded-lg px-4 py-3 text-warm-900 placeholder-warm-400 outline-none focus:border-crimson transition"
                 />
               </div>
               <div>
@@ -174,7 +174,7 @@ export default function Requests({ user }: RequestsProps) {
                 <input
                   type="text" placeholder="e.g. English, Swahili" value={form.language}
                   onChange={e => setForm(f => ({ ...f, language: e.target.value }))}
-                  className="w-full bg-white border border-warm-200 rounded-lg px-4 py-3 text-warm-900 placeholder-warm-400 outline-none focus:border-crimson transition"
+                  className="w-full bg-card border border-warm-200 rounded-lg px-4 py-3 text-warm-900 placeholder-warm-400 outline-none focus:border-crimson transition"
                 />
               </div>
             </div>
@@ -184,7 +184,7 @@ export default function Requests({ user }: RequestsProps) {
                 placeholder="Any extra details..." value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 rows={2}
-                className="w-full bg-white border border-warm-200 rounded-lg px-4 py-3 text-warm-900 placeholder-warm-400 outline-none focus:border-crimson transition resize-none"
+                className="w-full bg-card border border-warm-200 rounded-lg px-4 py-3 text-warm-900 placeholder-warm-400 outline-none focus:border-crimson transition resize-none"
               />
             </div>
             <button type="submit" disabled={submitting}
@@ -198,7 +198,7 @@ export default function Requests({ user }: RequestsProps) {
       {loading ? (
         <div className="flex flex-col gap-3 animate-pulse">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="bg-white border border-warm-200 rounded-xl p-4 sm:p-5 flex items-center gap-3 sm:gap-5">
+            <div key={i} className="bg-card border border-warm-200 rounded-xl p-4 sm:p-5 flex items-center gap-3 sm:gap-5">
               <div className="w-6 sm:w-8 text-center flex-shrink-0">
                 <div className="h-6 w-6 bg-warm-100 rounded mx-auto" />
               </div>
@@ -225,7 +225,7 @@ export default function Requests({ user }: RequestsProps) {
       ) : (
         <div className="flex flex-col gap-3">
           {requests.map((req, index) => (
-            <div key={req.id} className="bg-white border border-warm-200 rounded-xl p-4 sm:p-5 flex items-center gap-3 sm:gap-5 hover:border-warm-300 transition">
+            <div key={req.id} className="bg-card border border-warm-200 rounded-xl p-4 sm:p-5 flex items-center gap-3 sm:gap-5 hover:border-warm-300 transition">
               <span className="text-xl sm:text-2xl font-bold text-warm-400 w-6 sm:w-8 text-center flex-shrink-0">
                 {index + 1}
               </span>
@@ -247,7 +247,7 @@ export default function Requests({ user }: RequestsProps) {
                 className={`flex flex-col items-center px-3 sm:px-4 py-2 sm:py-3 rounded-xl border transition flex-shrink-0 ${
                   userVotes.has(req.id)
                     ? 'bg-crimson border-crimson text-white'
-                    : 'bg-white border-warm-300 text-warm-600 hover:border-crimson hover:text-crimson'
+                    : 'bg-card border-warm-300 text-warm-600 hover:border-crimson hover:text-crimson'
                 }`}
               >
                 <span className="text-base sm:text-lg leading-none">▲</span>

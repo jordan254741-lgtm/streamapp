@@ -23,6 +23,7 @@ module.exports = {
           DEFAULT: 'var(--crimson)',
           hover: 'var(--crimson-hover)',
         },
+        card: 'var(--card)',
       },
     },
   },

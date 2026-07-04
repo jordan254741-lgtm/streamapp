@@ -194,7 +194,7 @@ export default function Watch({ user }: WatchProps) {
                   <button
                     key={s.key}
                     onClick={() => handleSourceChange(s.key)}
-                    className={`px-3 py-1.5 text-xs rounded font-medium whitespace-nowrap transition-colors ${
+                    className={`px-3 py-1.5 text-sm rounded font-medium whitespace-nowrap transition-colors ${
                       activeSource === s.key
                         ? 'bg-crimson text-white'
                         : 'bg-warm-700 text-warm-300 hover:bg-warm-600'
@@ -311,7 +311,7 @@ export default function Watch({ user }: WatchProps) {
                     alt={person.name}
                     className="w-full aspect-[2/3] object-cover rounded-lg mb-1"
                   />
-                  <p className="text-xs text-warm-700 line-clamp-2">{person.name}</p>
+                  <p className="text-sm text-warm-700 line-clamp-2">{person.name}</p>
                   <p className="text-xs text-warm-500 line-clamp-1">{person.character}</p>
                 </div>
               ))}
@@ -338,7 +338,7 @@ export default function Watch({ user }: WatchProps) {
                     alt={m.title}
                     className="w-full aspect-[2/3] object-cover rounded-lg"
                   />
-                  <p className="text-xs text-warm-600 mt-1 line-clamp-1">{m.title}</p>
+                  <p className="text-sm text-warm-600 mt-1 line-clamp-1">{m.title}</p>
                 </div>
               ))}
             </div>

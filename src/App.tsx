@@ -54,7 +54,7 @@ function AppContent() {
   if (envError) {
     return (
       <div className="min-h-screen bg-warm-50 flex items-center justify-center px-6">
-        <div className="bg-white border border-crimson/30 rounded-xl p-8 max-w-lg text-center shadow-lg">
+        <div className="bg-card border border-crimson/30 rounded-xl p-8 max-w-lg text-center shadow-lg">
           <h1 className="text-2xl font-bold text-crimson mb-4">Configuration Error</h1>
           <p className="text-warm-700 mb-2">Missing or invalid environment variables:</p>
           <p className="text-crimson text-sm font-mono mb-4">{envError}</p>

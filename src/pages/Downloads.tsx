@@ -79,10 +79,10 @@ export default function Downloads({ user }: Props) {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {downloads.map(dl => (
-            <div key={dl.id} className="bg-white rounded-lg overflow-hidden border border-warm-200 shadow-sm">
+            <div key={dl.id} className="bg-card rounded-lg overflow-hidden border border-warm-200 shadow-sm">
               <div className="aspect-[2/3] bg-warm-100 relative">
                 <img src={dl.poster_url} alt={dl.title} className="w-full h-full object-cover" loading="lazy" />
-                <span className={`absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded font-bold ${qualityColors[dl.quality] || 'bg-warm-800 text-white'}`}>
+                <span className={`absolute top-2 right-2 text-xs px-1.5 py-0.5 rounded font-bold ${qualityColors[dl.quality] || 'bg-warm-800 text-white'}`}>
                   {dl.quality}
                 </span>
               </div>
