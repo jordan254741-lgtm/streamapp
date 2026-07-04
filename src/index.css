@@ -8,34 +8,51 @@
   --warm-200: #EDE6E4;
   --warm-300: #E0D5D3;
   --warm-400: #C4B5B3;
-  --warm-500: #9B8B89;
-  --warm-600: #7A6868;
-  --warm-700: #5E4E4E;
-  --warm-800: #3D3333;
-  --warm-900: #241E1E;
+  --warm-500: #A89A98;
+  --warm-600: #8A7878;
+  --warm-700: #6B5050;
+  --warm-800: #4A3535;
+  --warm-900: #2D2020;
   --crimson: #990011;
   --crimson-hover: #7A000E;
 }
 
 html.dark {
-  --warm-50: #030712;
-  --warm-100: #111827;
-  --warm-200: #1f2937;
-  --warm-300: #374151;
-  --warm-400: #6B7280;
-  --warm-500: #9CA3AF;
-  --warm-600: #D1D5DB;
-  --warm-700: #E5E7EB;
-  --warm-800: #F3F4F6;
-  --warm-900: #ffffff;
-  --crimson: #EF4444;
-  --crimson-hover: #DC2626;
+  --warm-50: #141414;
+  --warm-100: #1A1A1A;
+  --warm-200: #1E1E1E;
+  --warm-300: #262626;
+  --warm-400: #333333;
+  --warm-500: #555555;
+  --warm-600: #808080;
+  --warm-700: #A0A0A0;
+  --warm-800: #D0D0D0;
+  --warm-900: #F0F0F0;
+  --crimson: #E04545;
+  --crimson-hover: #CC3838;
+}
+
+*,
+*::before,
+*::after {
+  transition: background-color 0.2s ease,
+              color 0.2s ease,
+              border-color 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none;
+  }
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #374151 transparent;
+    scrollbar-color: #D0C8C6 transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
@@ -45,26 +62,26 @@ html.dark {
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #374151;
+    background-color: #D0C8C6;
     border-radius: 3px;
   }
 }
 
 html {
   scrollbar-width: thin;
-  scrollbar-color: #374151 transparent;
+  scrollbar-color: #D0C8C6 transparent;
 }
 
 html.dark .scrollbar-thin {
-  scrollbar-color: #4B5563 transparent;
+  scrollbar-color: #444 transparent;
 }
 
 html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: #4B5563;
+  background-color: #444;
 }
 
 html.dark {
-  scrollbar-color: #4B5563 transparent;
+  scrollbar-color: #444 transparent;
   color-scheme: dark;
 }
 
