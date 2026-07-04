@@ -1,6 +1,6 @@
 import type { User } from '@supabase/supabase-js'
-import { useQuery } from '@tanstack/react-query'
-import { FormEvent, useState } from 'react'
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { FormEvent, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import ErrorBoundary from '../components/ErrorBoundary'
@@ -20,6 +20,8 @@ const GENRES: Genre[] = [
   { id: 53, name: 'Thriller' },
 ]
 
+const MAX_PAGES = 20
+
 interface BrowseProps {
   user: User
 }
@@ -29,35 +31,62 @@ export default function Browse({ user }: BrowseProps) {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [activeGenre, setActiveGenre] = useState<number | null>(null)
-  const [page, setPage] = useState(1)
 
-  const queryKey = ['movies', search, activeGenre, page] as const
+  const queryKey = ['movies', search, activeGenre] as const
 
-  const { data, isLoading, error } = useQuery({
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    error,
+  } = useInfiniteQuery({
     queryKey,
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 1 }) => {
       if (search) {
-        return searchMovies(search, page)
+        return searchMovies(search, pageParam)
       }
       if (activeGenre) {
-        return fetchDiscoverMovies(activeGenre, page)
+        return fetchDiscoverMovies(activeGenre, pageParam)
       }
-      return fetchPopularMovies(page)
+      return fetchPopularMovies(pageParam)
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, pages) => {
+      if (pages.length >= Math.min(lastPage.total_pages, MAX_PAGES)) return undefined
+      return pages.length + 1
     },
     staleTime: 5 * 60 * 1000,
     retry: 3,
   })
 
-  const movies = data?.results || []
-  const totalPages = Math.min(data?.total_pages || 1, 20)
+  const movies = data?.pages.flatMap(p => p.results) || []
   const errorMessage = error instanceof Error ? error.message : null
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault()
     setSearch(searchInput)
     setActiveGenre(null)
-    setPage(1)
   }
+
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!sentinelRef.current || !hasNextPage || isFetchingNextPage) return
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage()
+        }
+      },
+      { rootMargin: '400px' },
+    )
+
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   return (
     <Layout user={user} maxWidth="3xl">
@@ -86,7 +115,7 @@ export default function Browse({ user }: BrowseProps) {
         {(search || activeGenre) && (
           <button
             type="button"
-            onClick={() => { setSearch(''); setSearchInput(''); setActiveGenre(null); setPage(1) }}
+            onClick={() => { setSearch(''); setSearchInput(''); setActiveGenre(null) }}
             className="bg-gray-700 hover:bg-gray-600 text-white px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm"
           >
             Clear
@@ -98,7 +127,7 @@ export default function Browse({ user }: BrowseProps) {
         {GENRES.map(genre => (
           <button
             key={genre.id}
-            onClick={() => { setActiveGenre(genre.id); setSearch(''); setSearchInput(''); setPage(1) }}
+            onClick={() => { setActiveGenre(genre.id); setSearch(''); setSearchInput('') }}
             className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition ${
               activeGenre === genre.id || (genre.id === null && !activeGenre && !search)
                 ? 'bg-purple-100 text-purple-900'
@@ -139,7 +168,7 @@ export default function Browse({ user }: BrowseProps) {
           <p className="text-gray-400 text-lg">No movies found.</p>
           {(search || activeGenre) && (
             <button
-              onClick={() => { setSearch(''); setSearchInput(''); setActiveGenre(null); setPage(1) }}
+              onClick={() => { setSearch(''); setSearchInput(''); setActiveGenre(null) }}
               className="mt-4 text-sm text-purple-400 hover:underline"
             >
               Clear filters
@@ -155,25 +184,15 @@ export default function Browse({ user }: BrowseProps) {
               onMovieClick={(movie) => navigate(`/watch/${movie.id}`)}
             />
           </ErrorBoundary>
-          <div className="flex justify-center items-center gap-4 mt-8 sm:mt-10">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-4 sm:px-5 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm disabled:opacity-40"
-            >
-              ← Prev
-            </button>
-            <span className="text-gray-400 text-sm">
-              Page {page} of {totalPages}
-            </span>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-4 sm:px-5 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm disabled:opacity-40"
-            >
-              Next →
-            </button>
-          </div>
+          <div ref={sentinelRef} className="h-10" />
+          {isFetchingNextPage && (
+            <div className="flex justify-center py-8">
+              <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+          {!hasNextPage && movies.length > 0 && (
+            <p className="text-center text-gray-500 text-sm py-8">You've reached the end</p>
+          )}
         </>
       )}
     </Layout>
