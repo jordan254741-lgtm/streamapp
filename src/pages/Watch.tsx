@@ -1,11 +1,11 @@
 import type { User } from '@supabase/supabase-js'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import ErrorBoundary from '../components/ErrorBoundary'
 import Layout from '../components/Layout'
 import SaveForLaterButton from '../components/SaveForLaterButton'
-import { fetchMovieBoxSource, fetchMovieDetails, fetchTvDetails } from '../lib/movie-api'
+import { fetchMovieBoxSource, fetchMovieDetails, fetchTvDetails, getEmbedSources } from '../lib/movie-api'
 import type { MovieDetailsResponse, TvDetailsResponse } from '../lib/movie-api'
 import type { CastMember, MediaType, Movie } from '../types'
 
@@ -38,6 +38,12 @@ interface MediaData {
   genres: Array<{ id: number; name: string }>
 }
 
+interface EmbedSource {
+  key: string
+  name: string
+  embedUrl: string
+}
+
 function isTvRoute(type?: string) {
   return type === 'tv'
 }
@@ -45,11 +51,14 @@ function isTvRoute(type?: string) {
 export default function Watch({ user }: WatchProps) {
   const { type: routeType, id } = useParams<{ type?: string; id: string }>()
   const navigate = useNavigate()
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const [media, setMedia] = useState<MediaData | null>(null)
   const [cast, setCast] = useState<CastMember[]>([])
   const [similar, setSimilar] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
-  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [sources, setSources] = useState<EmbedSource[]>([])
+  const [activeSource, setActiveSource] = useState<string>('')
+  const [iframeLoading, setIframeLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
 
   const isTv = isTvRoute(routeType)
@@ -83,9 +92,18 @@ export default function Watch({ user }: WatchProps) {
       setCast((data.credits?.cast || []).slice(0, 8))
       setSimilar((data.similar?.results || []).slice(0, 6))
 
+      const embedSources = getEmbedSources(tmdbId, mediaType)
+
       const year = releaseDate ? releaseDate.split('-')[0] : ''
       const mbUrl = await fetchMovieBoxSource(title, year)
-      setVideoUrl(mbUrl)
+      if (mbUrl) {
+        embedSources.unshift({ key: 'moviebox', name: 'MovieBox', embedUrl: mbUrl })
+      }
+
+      setSources(embedSources)
+      if (embedSources.length > 0 && !activeSource) {
+        setActiveSource(embedSources[0].key)
+      }
     } catch (err) {
       console.error('Failed to load:', err)
     } finally {
@@ -98,12 +116,13 @@ export default function Watch({ user }: WatchProps) {
     fetchData()
   }, [fetchData])
 
-  const handleRetry = () => {
+  const activeSourceData = sources.find(s => s.key === activeSource)
+  const isMovieBoxSource = activeSource === 'moviebox'
+
+  const handleSourceChange = (key: string) => {
+    setActiveSource(key)
+    setIframeLoading(true)
     setLoadError(false)
-    if (media) {
-      const year = media.release_date ? media.release_date.split('-')[0] : ''
-      fetchMovieBoxSource(media.title, year).then(url => setVideoUrl(url))
-    }
   }
 
   if (loading) {
@@ -162,28 +181,73 @@ export default function Watch({ user }: WatchProps) {
   return (
     <Layout user={user} maxWidth="3xl" showBack backTo="/browse" backLabel="Browse">
       <ErrorBoundary>
-        {!videoUrl ? (
-          <VideoFallback message={`No source available for this ${isTv ? 'series' : 'movie'}.`} />
+        {sources.length === 0 ? (
+          <VideoFallback message={`No sources available for this ${isTv ? 'series' : 'movie'}.`} />
         ) : (
           <div className="bg-warm-900 rounded-lg overflow-hidden">
+            {sources.length > 1 && (
+              <div className="flex items-center gap-1 px-3 py-2 bg-warm-800 border-b border-warm-700 overflow-x-auto scrollbar-thin">
+                {sources.map(s => (
+                  <button
+                    key={s.key}
+                    onClick={() => handleSourceChange(s.key)}
+                    className={`px-3 py-1.5 text-sm rounded font-medium whitespace-nowrap transition-colors ${
+                      activeSource === s.key
+                        ? 'bg-crimson text-white'
+                        : 'bg-warm-700 text-warm-300 hover:bg-warm-600'
+                    }`}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+                {isMovieBoxSource && (
+                  <span className="text-xs text-warm-500 ml-auto hidden sm:inline">5min preview</span>
+                )}
+              </div>
+            )}
+
             <div className="relative aspect-video">
+              {iframeLoading && !isMovieBoxSource && (
+                <div className="absolute inset-0 flex items-center justify-center bg-warm-900 z-10">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-8 h-8 border-4 border-crimson border-t-transparent rounded-full animate-spin" />
+                    <p className="text-warm-400 text-xs">Loading player...</p>
+                  </div>
+                </div>
+              )}
+
               {loadError && (
                 <div className="absolute inset-0 flex items-center justify-center bg-warm-800 z-10 flex-col gap-2">
-                  <p className="text-warm-400 text-sm">Failed to load video.</p>
+                  <p className="text-warm-400 text-sm">Failed to load.</p>
                   <button
-                    onClick={handleRetry}
+                    onClick={() => { setLoadError(false); setIframeLoading(true) }}
                     className="px-3 py-1.5 text-sm bg-crimson text-white rounded hover:bg-crimson-dark transition"
                   >
                     Retry
                   </button>
                 </div>
               )}
-              <video
-                src={videoUrl}
-                controls
-                className="w-full h-full"
-                onError={() => setLoadError(true)}
-              />
+
+              {activeSourceData && isMovieBoxSource ? (
+                <video
+                  src={activeSourceData.embedUrl}
+                  controls
+                  className="w-full h-full"
+                  onError={() => setLoadError(true)}
+                />
+              ) : activeSourceData ? (
+                <iframe
+                  ref={iframeRef}
+                  src={activeSourceData.embedUrl}
+                  className="w-full h-full border-0"
+                  sandbox="allow-scripts allow-same-origin"
+                  referrerPolicy="no-referrer"
+                  allow="autoplay; fullscreen"
+                  allowFullScreen
+                  onLoad={() => setIframeLoading(false)}
+                  onError={() => setLoadError(true)}
+                />
+              ) : null}
             </div>
           </div>
         )}
