@@ -1,67 +1,72 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
 
 export default function Login() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
     setError('')
+    setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setError(error.message)
-    else navigate('/browse')
     setLoading(false)
+    if (error) { setError(error.message); return }
+    navigate('/browse')
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 sm:p-8 w-full max-w-sm sm:max-w-md">
+    <div className="min-h-screen bg-warm-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">StreamApp</h1>
-          <p className="text-gray-400 text-sm mt-2">Welcome back</p>
+          <h1 className="text-3xl font-bold text-crimson">StreamApp</h1>
+          <p className="text-warm-600 mt-2 text-sm">Sign in to your account</p>
         </div>
-        <form onSubmit={handleLogin} className="space-y-5">
+
+        <form onSubmit={handleSubmit} className="bg-white border border-warm-200 rounded-xl p-6 sm:p-8 shadow-sm space-y-4">
+          {error && <div className="text-crimson text-sm bg-red-50 p-3 rounded-lg">{error}</div>}
+
           <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2">Email</label>
+            <label className="block text-warm-700 text-sm font-medium mb-1.5">Email</label>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-gray-800 text-white rounded-lg px-4 py-3 border border-gray-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none transition"
               required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full bg-white border border-warm-200 text-warm-900 rounded-lg px-4 py-3 text-sm focus:border-crimson focus:ring-1 focus:ring-crimson outline-none placeholder-warm-400 transition"
+              placeholder="you@example.com"
             />
           </div>
+
           <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2">Password</label>
+            <label className="block text-warm-700 text-sm font-medium mb-1.5">Password</label>
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-gray-800 text-white rounded-lg px-4 py-3 border border-gray-700 focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:outline-none transition"
               required
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full bg-white border border-warm-200 text-warm-900 rounded-lg px-4 py-3 text-sm focus:border-crimson focus:ring-1 focus:ring-crimson outline-none placeholder-warm-400 transition"
+              placeholder="••••••••"
             />
           </div>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-crimson hover:bg-crimson-hover text-white py-3 rounded-lg font-semibold disabled:opacity-50 transition"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-        <p className="text-gray-400 text-center mt-6 text-sm">
+
+        <p className="text-center text-warm-500 mt-4 text-sm">
           Don't have an account?{' '}
-          <Link to="/register" className="text-purple-400 hover:text-purple-300 transition font-medium">
-            Sign up
-          </Link>
+          <button onClick={() => navigate('/register')} className="text-crimson hover:underline font-medium">Create one</button>
         </p>
       </div>
     </div>

@@ -6,8 +6,12 @@ import MovieCard from './MovieCard'
 
 interface Props {
   movies: Movie[]
+  loading?: boolean
+  loadingMore?: boolean
+  hasMore?: boolean
   gap?: number
   onMovieClick?: (movie: Movie) => void
+  onSelect?: (id: number) => void
   onLoadMore?: () => void
 }
 
@@ -16,6 +20,7 @@ interface CellExtraProps {
   columns: number
   gap: number
   onMovieClick?: (movie: Movie) => void
+  onSelect?: (id: number) => void
 }
 
 function CellComponent({
@@ -27,6 +32,7 @@ function CellComponent({
   columns,
   gap,
   onMovieClick,
+  onSelect,
 }: {
   columnIndex: number
   rowIndex: number
@@ -36,9 +42,13 @@ function CellComponent({
   const index = rowIndex * columns + columnIndex
   if (index >= movies.length) return null
   const movie = movies[index]
+  const handleClick = () => {
+    if (onSelect) onSelect(movie.id)
+    else if (onMovieClick) onMovieClick(movie)
+  }
   return (
     <div style={{ ...style, padding: `${gap / 2}px` }} {...ariaAttributes}>
-      <MovieCard movie={movie} onClick={onMovieClick ? () => onMovieClick(movie) : undefined} />
+      <MovieCard movie={movie} onClick={handleClick} />
     </div>
   )
 }
@@ -52,7 +62,7 @@ function getColumnCount(width: number): number {
   return 7
 }
 
-export default function VirtualMovieGrid({ movies, gap = 16, onMovieClick, onLoadMore }: Props) {
+export default function VirtualMovieGrid({ movies, loading, loadingMore, hasMore, gap = 16, onMovieClick, onSelect, onLoadMore }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [columns, setColumns] = useState(6)
@@ -86,7 +96,7 @@ export default function VirtualMovieGrid({ movies, gap = 16, onMovieClick, onLoa
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      if (!onLoadMore) return
+      if (!onLoadMore || hasMore === false) return
       const scrollOffset = e.currentTarget.scrollTop
       const totalHeight = rowCount * (cardHeight + gap)
       const visibleHeight = e.currentTarget.clientHeight
@@ -94,22 +104,40 @@ export default function VirtualMovieGrid({ movies, gap = 16, onMovieClick, onLoa
         onLoadMore()
       }
     },
-    [onLoadMore, rowCount, cardHeight, gap],
+    [onLoadMore, hasMore, rowCount, cardHeight, gap],
   )
 
   const cellProps = useMemo<CellExtraProps>(
-    () => ({ movies, columns, gap, onMovieClick }),
-    [movies, columns, gap, onMovieClick],
+    () => ({ movies, columns, gap, onMovieClick, onSelect }),
+    [movies, columns, gap, onMovieClick, onSelect],
   )
+
+  if (loading) {
+    return (
+      <div ref={containerRef} className="w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="aspect-[2/3] bg-warm-100 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   if (width === 0 || movies.length === 0) {
     return (
       <div ref={containerRef} className="w-full">
         {movies.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
-            {movies.map(movie => (
-              <MovieCard key={movie.id} movie={movie} onClick={onMovieClick ? () => onMovieClick(movie) : undefined} />
-            ))}
+            {movies.map(movie => {
+              const handleClick = () => {
+                if (onSelect) onSelect(movie.id)
+                else if (onMovieClick) onMovieClick(movie)
+              }
+              return (
+                <MovieCard key={movie.id} movie={movie} onClick={handleClick} />
+              )
+            })}
           </div>
         )}
       </div>
@@ -129,6 +157,11 @@ export default function VirtualMovieGrid({ movies, gap = 16, onMovieClick, onLoa
         onScroll={handleScroll}
         style={{ height: gridHeight, width }}
       />
+      {loadingMore && (
+        <div className="flex justify-center py-4">
+          <div className="w-6 h-6 border-2 border-crimson border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
     </div>
   )
 }

@@ -39,15 +39,15 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
   const mw = maxWidthClasses[maxWidth] || 'max-w-7xl'
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <nav className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-50">
+    <div className="min-h-screen bg-warm-50 text-warm-900">
+      <nav className="bg-white/95 backdrop-blur-sm border-b border-warm-200 sticky top-0 z-50">
         <div className="max-w-screen-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
             <div className="flex items-center gap-2 sm:gap-8">
               {showBack && (
                 <button
                   onClick={() => navigate(backTo || '/browse')}
-                  className="text-gray-400 hover:text-white text-sm flex items-center gap-1 mr-2"
+                  className="text-warm-600 hover:text-crimson text-sm flex items-center gap-1 mr-2 transition"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -57,7 +57,7 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
               )}
               <h1
                 onClick={() => navigate('/browse')}
-                className="text-lg sm:text-xl font-bold text-white cursor-pointer select-none"
+                className="text-lg sm:text-xl font-bold text-crimson cursor-pointer select-none"
               >
                 StreamApp
               </h1>
@@ -70,8 +70,8 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
                       onClick={() => navigate(item.path)}
                       className={`px-3 py-2 text-sm rounded-lg transition ${
                         isActive
-                          ? 'text-white bg-gray-800'
-                          : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                          ? 'text-crimson bg-warm-100 font-medium'
+                          : 'text-warm-600 hover:text-crimson hover:bg-warm-100'
                       }`}
                     >
                       {item.label}
@@ -82,11 +82,11 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
             </div>
 
             <div className="hidden md:flex items-center gap-3">
-              <span className="text-gray-500 text-sm truncate max-w-[180px] xl:max-w-[240px]">{user.email}</span>
+              <span className="text-warm-500 text-sm truncate max-w-[180px] xl:max-w-[240px]">{user.email}</span>
               <button
                 onClick={signOut}
                 disabled={isSigningOut}
-                className="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-sm px-3 py-1.5 rounded-lg transition text-xs"
+                className="bg-warm-100 hover:bg-warm-200 text-warm-700 hover:text-crimson text-sm px-3 py-1.5 rounded-lg transition text-xs"
               >
                 {isSigningOut ? '...' : 'Sign Out'}
               </button>
@@ -94,7 +94,7 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-gray-400 hover:text-white"
+              className="md:hidden p-2 text-warm-600 hover:text-crimson transition"
               aria-label="Toggle menu"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,7 +109,7 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
         </div>
 
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-800 bg-gray-900">
+          <div className="md:hidden border-t border-warm-200 bg-white">
             <div className="px-4 py-3 space-y-1">
               {navItems.map(item => {
                 const isActive = location.pathname === item.path
@@ -119,20 +119,20 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
                     onClick={() => { navigate(item.path); setMobileMenuOpen(false) }}
                     className={`block w-full text-left px-4 py-3 text-sm rounded-lg transition ${
                       isActive
-                        ? 'text-white bg-gray-800'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                        ? 'text-crimson bg-warm-100 font-medium'
+                        : 'text-warm-600 hover:text-crimson hover:bg-warm-50'
                     }`}
                   >
                     {item.label}
                   </button>
                 )
               })}
-              <div className="border-t border-gray-800 pt-3 mt-3 space-y-1">
-                <span className="block px-4 py-2 text-sm text-gray-500 truncate">{user.email}</span>
+              <div className="border-t border-warm-200 pt-3 mt-3 space-y-1">
+                <span className="block px-4 py-2 text-sm text-warm-500 truncate">{user.email}</span>
                 <button
                   onClick={() => { signOut(); setMobileMenuOpen(false) }}
                   disabled={isSigningOut}
-                  className="w-full text-left px-4 py-3 text-sm text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition"
+                  className="w-full text-left px-4 py-3 text-sm text-warm-600 hover:text-crimson hover:bg-warm-50 rounded-lg transition"
                 >
                   {isSigningOut ? 'Signing out...' : 'Sign Out'}
                 </button>

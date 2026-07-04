@@ -34,16 +34,16 @@ export default function SaveForLaterButton({ movie, quality = '1080p', user }: P
   }
 
   if (saved) {
-    return <span className="text-green-400 text-sm">✓ Saved for later</span>
+    return <span className="text-green-700 text-sm font-medium">✓ Saved for later</span>
   }
 
   return (
     <button
       onClick={handleSave}
       disabled={saving}
-      className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded disabled:opacity-50"
+      className="bg-warm-800 hover:bg-warm-900 text-white px-4 py-2 rounded-lg disabled:opacity-50 transition"
     >
-      {saving ? 'Saving...' : '📌 Save for Later'}
+      {saving ? 'Saving...' : 'Save for Later'}
     </button>
   )
 }

@@ -1,362 +1,238 @@
 import type { User } from '@supabase/supabase-js'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { FormEvent, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
-import ErrorBoundary from '../components/ErrorBoundary'
-import Layout from '../components/Layout'
 import ContentRow from '../components/movies/ContentRow'
 import VirtualMovieGrid from '../components/movies/VirtualMovieGrid'
 import {
-  fetchDiscoverMovies,
-  fetchDiscoverTv,
+  fetchMovieDetails,
   fetchNowPlaying,
   fetchPopularMovies,
-  fetchPopularTv,
   fetchTopRated,
   fetchTrending,
+  fetchTvDetails,
+  fetchUpcoming,
   searchMovies,
   searchTv,
+  fetchDiscoverTv,
 } from '../lib/movie-api'
-import type { Genre } from '../types'
+import type { Movie, Genre } from '../types'
 
 const MOVIE_GENRES: Genre[] = [
-  { id: null, name: 'All' },
-  { id: 28, name: 'Action' },
-  { id: 35, name: 'Comedy' },
-  { id: 18, name: 'Drama' },
-  { id: 27, name: 'Horror' },
-  { id: 878, name: 'Sci-Fi' },
-  { id: 10749, name: 'Romance' },
-  { id: 53, name: 'Thriller' },
+  { id: 28, name: 'Action' }, { id: 12, name: 'Adventure' },
+  { id: 16, name: 'Animation' }, { id: 35, name: 'Comedy' },
+  { id: 80, name: 'Crime' }, { id: 99, name: 'Documentary' },
+  { id: 18, name: 'Drama' }, { id: 10751, name: 'Family' },
+  { id: 14, name: 'Fantasy' }, { id: 36, name: 'History' },
+  { id: 27, name: 'Horror' }, { id: 10402, name: 'Music' },
+  { id: 9648, name: 'Mystery' }, { id: 10749, name: 'Romance' },
+  { id: 878, name: 'Sci-Fi' }, { id: 10770, name: 'TV Movie' },
+  { id: 53, name: 'Thriller' }, { id: 10752, name: 'War' },
+  { id: 37, name: 'Western' },
 ]
 
 const TV_GENRES: Genre[] = [
-  { id: null, name: 'All' },
-  { id: 10759, name: 'Action' },
-  { id: 35, name: 'Comedy' },
-  { id: 18, name: 'Drama' },
-  { id: 9648, name: 'Mystery' },
-  { id: 10765, name: 'Sci-Fi' },
-  { id: 10751, name: 'Family' },
-  { id: 16, name: 'Animation' },
+  { id: 10759, name: 'Action & Adventure' }, { id: 16, name: 'Animation' },
+  { id: 35, name: 'Comedy' }, { id: 80, name: 'Crime' },
+  { id: 99, name: 'Documentary' }, { id: 18, name: 'Drama' },
+  { id: 10751, name: 'Family' }, { id: 10762, name: 'Kids' },
+  { id: 9648, name: 'Mystery' }, { id: 10763, name: 'News' },
+  { id: 10764, name: 'Reality' }, { id: 10765, name: 'Sci-Fi & Fantasy' },
+  { id: 10766, name: 'Soap' }, { id: 10767, name: 'Talk' },
+  { id: 10768, name: 'War & Politics' }, { id: 37, name: 'Western' },
 ]
 
-const MAX_PAGES = 20
-
-interface BrowseProps {
+interface Props {
   user: User
 }
 
-export default function Browse({ user }: BrowseProps) {
-  const navigate = useNavigate()
-  const [view, setView] = useState<'home' | 'browse'>('home')
-  const [browseType, setBrowseType] = useState<'movies' | 'series'>('movies')
-  const [search, setSearch] = useState('')
-  const [searchInput, setSearchInput] = useState('')
-  const [activeGenre, setActiveGenre] = useState<number | null>(null)
+type Tab = 'movies' | 'series' | 'trending'
 
-  const genres = browseType === 'series' ? TV_GENRES : MOVIE_GENRES
+export default function Browse({ user }: Props) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [query, setQuery] = useState('')
+  const [tab, setTab] = useState<Tab>((searchParams.get('tab') as Tab) || 'movies')
+  const [selectedGenre, setSelectedGenre] = useState<number | null>(null)
+  const [movies, setMovies] = useState<Movie[]>([])
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
 
-  const isSearching = !!search
+  const activeGenres = tab === 'series' ? TV_GENRES : MOVIE_GENRES
 
-  const trendingQuery = useQuery({
-    queryKey: ['home', 'trending'],
-    queryFn: () => fetchTrending(1),
-    staleTime: 10 * 60 * 1000,
-    retry: 2,
-  })
+  useEffect(() => { setMovies([]); setPage(1); setHasMore(true); setInitialLoading(true); setSelectedGenre(null) }, [tab])
 
-  const latestQuery = useQuery({
-    queryKey: ['home', 'latest'],
-    queryFn: () => fetchNowPlaying(1),
-    staleTime: 10 * 60 * 1000,
-    retry: 2,
-  })
+  useEffect(() => {
+    const t = searchParams.get('tab')
+    if (t && ['movies', 'series', 'trending'].includes(t)) setTab(t as Tab)
+  }, [searchParams])
 
-  const topRatedQuery = useQuery({
-    queryKey: ['home', 'topRated'],
-    queryFn: () => fetchTopRated(1),
-    staleTime: 10 * 60 * 1000,
-    retry: 2,
-  })
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    try {
+      const nextPage = page + 1
+      const newMovies = tab === 'trending'
+        ? await fetchTrending(nextPage)
+        : await fetchPopularMovies(nextPage)
+      setMovies(prev => [...prev, ...newMovies])
+      setPage(nextPage)
+      setHasMore(newMovies.length > 0)
+    } catch (e) { console.error(e) } finally { setLoadingMore(false) }
+  }
 
-  const popularTvQuery = useQuery({
-    queryKey: ['home', 'popularTv'],
-    queryFn: () => fetchPopularTv(1),
-    staleTime: 10 * 60 * 1000,
-    retry: 2,
-  })
-
-  const browseQueryKey = ['browse', browseType, search, activeGenre] as const
-
-  const {
-    data: browseData,
-    isLoading: browseLoading,
-    isFetchingNextPage: browseFetchingNext,
-    hasNextPage: browseHasNext,
-    fetchNextPage: browseFetchNext,
-    error: browseError,
-  } = useInfiniteQuery({
-    queryKey: browseQueryKey,
-    queryFn: async ({ pageParam = 1 }) => {
-      if (search) {
-        return browseType === 'series' ? searchTv(search, pageParam) : searchMovies(search, pageParam)
-      }
-      if (activeGenre) {
-        return browseType === 'series' ? fetchDiscoverTv(activeGenre, pageParam) : fetchDiscoverMovies(activeGenre, pageParam)
-      }
-      return browseType === 'series' ? fetchPopularTv(pageParam) : fetchPopularMovies(pageParam)
-    },
-    initialPageParam: 1,
-    getNextPageParam: (lastPage, pages) => {
-      if (pages.length >= Math.min(lastPage.total_pages, MAX_PAGES)) return undefined
-      return pages.length + 1
-    },
-    staleTime: 5 * 60 * 1000,
-    retry: 3,
-    enabled: view === 'browse' || isSearching,
-  })
-
-  const browseItems = browseData?.pages.flatMap(p => p.results) || []
-  const browseErrorMsg = browseError instanceof Error ? browseError.message : null
-
-  const navigateToContent = (movie: { id: number; media_type?: string }) => {
-    const mediaType = movie.media_type || 'movie'
-    if (mediaType === 'tv') {
-      navigate(`/watch/tv/${movie.id}`)
-    } else {
-      navigate(`/watch/${movie.id}`)
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      setInitialLoading(true)
+      try {
+        if (query.trim()) {
+          const [movieResults, tvResults] = await Promise.all([
+            searchMovies(query, 1),
+            searchTv(query, 1),
+          ])
+          const merged = tab === 'movies'
+            ? movieResults
+            : tab === 'series'
+            ? tvResults
+            : [...movieResults, ...tvResults].sort((a, b) => b.vote_average - a.vote_average)
+          if (!cancelled) { setMovies(merged); setHasMore(false) }
+        } else {
+          const detailPromises = tab === 'trending'
+            ? [fetchTrending(1)]
+            : [fetchPopularMovies(1), fetchNowPlaying(1), fetchTopRated(1), fetchUpcoming(1)]
+          const results = await Promise.all(detailPromises)
+          const all = results.flat()
+          const seen = new Set<number>()
+          const unique: Movie[] = []
+          for (const m of all) { if (!seen.has(m.id)) { seen.add(m.id); unique.push(m) } }
+          if (tab === 'trending') {
+            unique.sort((a, b) => b.release_date?.localeCompare(a.release_date || '') || 0)
+          }
+          if (!cancelled) { setMovies(unique); setPage(1); setHasMore(true) }
+        }
+      } catch (e) { console.error(e) } finally { if (!cancelled) setInitialLoading(false) }
     }
-  }
+    load()
+    return () => { cancelled = true }
+  }, [query, tab])
 
-  const handleSearch = (e: FormEvent) => {
-    e.preventDefault()
-    setSearch(searchInput)
-    if (!searchInput) {
-      setView('home')
-    } else {
-      setView('browse')
+  useEffect(() => {
+    if (selectedGenre === null) return
+    let cancelled = false
+    const load = async () => {
+      setInitialLoading(true)
+      try {
+        const isTv = tab === 'series'
+        const results = await fetchDiscoverTv(selectedGenre)
+        if (!cancelled) { setMovies(results); setHasMore(false) }
+      } catch (e) { console.error(e) } finally { if (!cancelled) setInitialLoading(false) }
     }
-    setActiveGenre(null)
-  }
+    load()
+    return () => { cancelled = true }
+  }, [selectedGenre, tab])
 
-  const switchToBrowse = (type: 'movies' | 'series') => {
-    setBrowseType(type)
-    setView('browse')
-    setSearch('')
-    setSearchInput('')
-    setActiveGenre(null)
-  }
-
-  const showHome = view === 'home' && !isSearching
+  const setTabWithParams = (t: Tab) => { setTab(t); setSearchParams({ tab: t }) }
 
   return (
-    <Layout user={user} maxWidth="3xl">
-      <form onSubmit={handleSearch} className="flex gap-2 sm:gap-3 mb-4 sm:mb-6">
-        <div className="relative flex-1">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search movies & series..."
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            className="w-full bg-gray-800 text-white placeholder-gray-500 border border-gray-700 rounded-lg pl-10 pr-4 py-2.5 sm:py-3 outline-none focus:border-gray-400 text-sm sm:text-base"
-          />
+    <div className="min-h-screen bg-warm-50">
+      <div className="max-w-screen-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-warm-900">Browse</h1>
+            <p className="text-warm-600 mt-1 text-sm">Discover movies and series</p>
+          </div>
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-warm-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search movies & series..."
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              className="w-full sm:w-64 md:w-80 lg:w-96 bg-white border border-warm-200 text-warm-900 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:border-crimson focus:ring-1 focus:ring-crimson outline-none placeholder-warm-400 transition"
+            />
+            {query && (
+              <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-warm-400 hover:text-crimson transition text-lg">×</button>
+            )}
+          </div>
         </div>
-        <button
-          type="submit"
-          className="bg-purple-600 hover:bg-purple-700 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold text-sm sm:text-base whitespace-nowrap"
-        >
-          Search
-        </button>
-      </form>
 
-      {showHome && (
-        <>
-          <ErrorBoundary>
-            {trendingQuery.data && (
-              <ContentRow title="Trending Now" items={trendingQuery.data.results.slice(0, 20)} onItemClick={navigateToContent} />
-            )}
-          </ErrorBoundary>
-
-          <ErrorBoundary>
-            {latestQuery.data && (
-              <ContentRow title="Latest Releases" items={latestQuery.data.results.slice(0, 20)} onItemClick={navigateToContent} />
-            )}
-          </ErrorBoundary>
-
-          <ErrorBoundary>
-            {topRatedQuery.data && (
-              <ContentRow title="Top Rated" items={topRatedQuery.data.results.slice(0, 20)} onItemClick={navigateToContent} />
-            )}
-          </ErrorBoundary>
-
-          <ErrorBoundary>
-            {popularTvQuery.data && (
-              <ContentRow title="Popular Series" items={popularTvQuery.data.results.slice(0, 20)} onItemClick={navigateToContent} />
-            )}
-          </ErrorBoundary>
-
-          <div className="border-t border-gray-800 pt-6 sm:pt-8 mt-6 sm:mt-8">
-            <div className="flex items-center gap-3 mb-6">
-              <h2 className="text-lg sm:text-xl font-bold">Browse All</h2>
-              <div className="flex gap-1 bg-gray-800 rounded-lg p-0.5">
-                <button
-                  onClick={() => switchToBrowse('movies')}
-                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition ${
-                    browseType === 'movies'
-                      ? 'bg-purple-600 text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  Movies
-                </button>
-                <button
-                  onClick={() => switchToBrowse('series')}
-                  className={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition ${
-                    browseType === 'series'
-                      ? 'bg-purple-600 text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  Series
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-thin">
-              {genres.map(genre => (
-                <button
-                  key={genre.id}
-                  onClick={() => { setActiveGenre(genre.id); setSearch(''); setSearchInput('') }}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition ${
-                    activeGenre === genre.id || (genre.id === null && !activeGenre && !search)
-                      ? 'bg-purple-100 text-purple-900'
-                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                  }`}
-                >
-                  {genre.name}
-                </button>
-              ))}
-            </div>
-
-            {browseLoading && (
-              <div className="flex justify-center py-20">
-                <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-            {browseErrorMsg && (
-              <div className="text-center py-20">
-                <p className="text-red-400 mb-2">{browseErrorMsg}</p>
-                <button onClick={() => window.location.reload()} className="text-sm text-gray-400 hover:text-white underline">Try again</button>
-              </div>
-            )}
-            {!browseLoading && !browseErrorMsg && browseItems.length === 0 && (
-              <div className="text-center py-20">
-                <p className="text-gray-400 text-lg">Nothing found.</p>
-                {(search || activeGenre) && (
-                  <button onClick={() => { setSearch(''); setSearchInput(''); setActiveGenre(null) }} className="mt-4 text-sm text-purple-400 hover:underline">Clear filters</button>
-                )}
-              </div>
-            )}
-            {!browseLoading && !browseErrorMsg && browseItems.length > 0 && (
-              <>
-                <VirtualMovieGrid
-                  movies={browseItems}
-                  onMovieClick={(movie) => navigateToContent(movie)}
-                  onLoadMore={browseHasNext ? () => browseFetchNext() : undefined}
-                />
-                {browseFetchingNext && (
-                  <div className="flex justify-center py-8">
-                    <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
-                {!browseHasNext && browseItems.length > 0 && (
-                  <p className="text-center text-gray-500 text-sm py-8">You've reached the end</p>
-                )}
-              </>
-            )}
-          </div>
-        </>
-      )}
-
-      {!showHome && (
-        <>
-          <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-800">
+        <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-thin pb-2">
+          {([['movies', 'Movies'], ['series', 'Series'], ['trending', 'Trending']] as [Tab, string][]).map(([t, label]) => (
             <button
-              onClick={() => { setBrowseType('movies'); setSearch(''); setSearchInput(''); setActiveGenre(null); setView('home') }}
-              className="px-3 sm:px-4 py-2.5 sm:py-3 text-sm font-medium text-gray-500 hover:text-gray-300 transition"
+              key={t}
+              onClick={() => setTabWithParams(t)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                tab === t ? 'bg-crimson text-white' : 'bg-warm-100 text-warm-700 hover:bg-warm-200'
+              }`}
             >
-              ← Back to Home
+              {label}
             </button>
-          </div>
+          ))}
+        </div>
 
-          <div className="flex gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-thin">
-            {genres.map(genre => (
+        {!query && (
+          <div className="flex gap-2 mb-6 overflow-x-auto scrollbar-thin pb-2">
+            {activeGenres.map(g => (
               <button
-                key={genre.id}
-                onClick={() => { setActiveGenre(genre.id); setSearch(''); setSearchInput('') }}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition ${
-                  activeGenre === genre.id || (genre.id === null && !activeGenre && !search)
-                    ? 'bg-purple-100 text-purple-900'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                key={g.id}
+                onClick={() => setSelectedGenre(selectedGenre === g.id ? null : g.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${
+                  selectedGenre === g.id
+                    ? 'bg-crimson text-white'
+                    : 'bg-warm-100 text-warm-600 hover:bg-warm-200 hover:text-warm-900'
                 }`}
               >
-                {genre.name}
+                {g.name}
               </button>
             ))}
           </div>
+        )}
 
-          <h2 className="text-lg sm:text-xl font-bold mb-4">
-            {search ? `Results for "${search}"` : activeGenre ? genres.find(g => g.id === activeGenre)?.name || '' : ''}
-          </h2>
-
-          {browseLoading && (
-            <div className="flex justify-center py-20">
-              <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
+        {initialLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="aspect-[2/3] bg-warm-100 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : !query && selectedGenre === null && tab !== 'trending' ? (
+          <div>
+            <ContentRow title="Trending Now" fetchFn={fetchTrending} onMovieClick={(id, m) => {}} />
+            <ContentRow title="Latest Releases" fetchFn={fetchNowPlaying} onMovieClick={(id, m) => {}} />
+            <ContentRow title="Top Rated" fetchFn={fetchTopRated} onMovieClick={(id, m) => {}} />
+            <ContentRow title="Upcoming" fetchFn={fetchUpcoming} onMovieClick={(id, m) => {}} />
+            <div className="mt-8">
+              <h2 className="text-xl font-semibold text-warm-900 mb-4">Browse All</h2>
+              <VirtualMovieGrid
+                movies={movies}
+                loading={initialLoading}
+                loadingMore={loadingMore}
+                hasMore={hasMore}
+                onLoadMore={loadMore}
+                onSelect={id => {
+                  const m = movies.find(x => x.id === id)
+                  window.location.href = m?.media_type === 'tv' ? `/watch/tv/${id}` : `/watch/${id}`
+                }}
+              />
             </div>
-          )}
-          {browseErrorMsg && (
-            <div className="text-center py-20">
-              <p className="text-red-400 mb-2">{browseErrorMsg}</p>
-              <button onClick={() => window.location.reload()} className="text-sm text-gray-400 hover:text-white underline">Try again</button>
-            </div>
-          )}
-          {!browseLoading && !browseErrorMsg && browseItems.length === 0 && (
-            <div className="text-center py-20">
-              <p className="text-gray-400 text-lg">Nothing found.</p>
-              {(search || activeGenre) && (
-                <button onClick={() => { setSearch(''); setSearchInput(''); setActiveGenre(null); setView('home') }} className="mt-4 text-sm text-purple-400 hover:underline">Clear filters</button>
-              )}
-            </div>
-          )}
-          {!browseLoading && !browseErrorMsg && browseItems.length > 0 && (
-            <>
-              <ErrorBoundary>
-                <VirtualMovieGrid
-                  movies={browseItems}
-                  onMovieClick={(movie) => navigateToContent(movie)}
-                  onLoadMore={browseHasNext ? () => browseFetchNext() : undefined}
-                />
-              </ErrorBoundary>
-              {browseFetchingNext && (
-                <div className="flex justify-center py-8">
-                  <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
-              {!browseHasNext && browseItems.length > 0 && (
-                <p className="text-center text-gray-500 text-sm py-8">You've reached the end</p>
-              )}
-            </>
-          )}
-        </>
-      )}
-    </Layout>
+          </div>
+        ) : (
+          <VirtualMovieGrid
+            movies={movies}
+            loading={initialLoading}
+            loadingMore={loadingMore}
+            hasMore={hasMore}
+            onLoadMore={loadMore}
+            onSelect={id => {
+              const m = movies.find(x => x.id === id)
+              window.location.href = m?.media_type === 'tv' ? `/watch/tv/${id}` : `/watch/${id}`
+            }}
+          />
+        )}
+      </div>
+    </div>
   )
 }

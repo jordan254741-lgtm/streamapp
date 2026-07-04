@@ -41,20 +41,20 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-warm-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-crimson border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   if (envError) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-6">
-        <div className="bg-gray-900 border border-red-800 rounded-xl p-8 max-w-lg text-center">
-          <h1 className="text-2xl font-bold text-red-400 mb-4">Configuration Error</h1>
-          <p className="text-gray-300 mb-2">Missing or invalid environment variables:</p>
-          <p className="text-red-300 text-sm font-mono mb-4">{envError}</p>
-          <p className="text-gray-500 text-xs">Please check your .env file or Vercel environment variables.</p>
+      <div className="min-h-screen bg-warm-50 flex items-center justify-center px-6">
+        <div className="bg-white border border-crimson/30 rounded-xl p-8 max-w-lg text-center shadow-lg">
+          <h1 className="text-2xl font-bold text-crimson mb-4">Configuration Error</h1>
+          <p className="text-warm-700 mb-2">Missing or invalid environment variables:</p>
+          <p className="text-crimson text-sm font-mono mb-4">{envError}</p>
+          <p className="text-warm-500 text-xs">Please check your .env file or Vercel environment variables.</p>
         </div>
       </div>
     )
