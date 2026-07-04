@@ -66,6 +66,34 @@ export async function fetchMovieBoxSource(title: string, year: string): Promise<
   }
 }
 
+function normalizeTvShow(item: TvResult): MovieResult {
+  return {
+    id: item.id,
+    title: item.name,
+    poster_path: item.poster_path,
+    backdrop_path: item.backdrop_path,
+    release_date: item.first_air_date || '',
+    vote_average: item.vote_average,
+    vote_count: item.vote_count,
+    overview: item.overview,
+    genre_ids: item.genre_ids,
+  }
+}
+
+function normalizeTrendingItem(item: TrendingResult): MovieResult {
+  return {
+    id: item.id,
+    title: item.title || item.name || 'Untitled',
+    poster_path: item.poster_path,
+    backdrop_path: item.backdrop_path,
+    release_date: item.release_date || item.first_air_date || '',
+    vote_average: item.vote_average,
+    vote_count: item.vote_count,
+    overview: item.overview,
+    genre_ids: item.genre_ids,
+  }
+}
+
 export async function fetchPopularMovies(page = 1) {
   return tmdbFetch<MovieApiResponse>(`/movie/popular?page=${page}`)
 }
@@ -78,6 +106,28 @@ export async function fetchDiscoverMovies(genre: number, page = 1) {
 
 export async function searchMovies(query: string, page = 1) {
   return tmdbFetch<MovieApiResponse>(`/search/movie?query=${encodeURIComponent(query)}&page=${page}`)
+}
+
+export async function fetchPopularTv(page = 1) {
+  const data = await tmdbFetch<TvApiResponse>(`/tv/popular?page=${page}`)
+  return { ...data, results: data.results.map(normalizeTvShow) }
+}
+
+export async function fetchDiscoverTv(genre: number, page = 1) {
+  const data = await tmdbFetch<TvApiResponse>(
+    `/discover/tv?with_genres=${genre}&sort_by=popularity.desc&page=${page}`,
+  )
+  return { ...data, results: data.results.map(normalizeTvShow) }
+}
+
+export async function searchTv(query: string, page = 1) {
+  const data = await tmdbFetch<TvApiResponse>(`/search/tv?query=${encodeURIComponent(query)}&page=${page}`)
+  return { ...data, results: data.results.map(normalizeTvShow) }
+}
+
+export async function fetchTrending(page = 1, timeWindow: 'day' | 'week' = 'week') {
+  const data = await tmdbFetch<TrendingApiResponse>(`/trending/all/${timeWindow}?page=${page}`)
+  return { ...data, results: data.results.map(normalizeTrendingItem) }
 }
 
 export async function fetchMovieDetails(id: number) {
@@ -140,4 +190,41 @@ export interface TmdbVideo {
   site: string
   type: string
   official: boolean
+}
+
+interface TvResult {
+  id: number
+  name: string
+  poster_path: string
+  backdrop_path: string
+  first_air_date: string
+  vote_average: number
+  vote_count: number
+  overview: string
+  genre_ids: number[]
+}
+
+interface TvApiResponse {
+  results: TvResult[]
+  total_pages: number
+}
+
+interface TrendingResult {
+  id: number
+  title?: string
+  name?: string
+  media_type: string
+  poster_path: string
+  backdrop_path: string
+  release_date?: string
+  first_air_date?: string
+  vote_average: number
+  vote_count: number
+  overview: string
+  genre_ids: number[]
+}
+
+interface TrendingApiResponse {
+  results: TrendingResult[]
+  total_pages: number
 }
