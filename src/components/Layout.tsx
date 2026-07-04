@@ -29,8 +29,9 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
   const navigate = useNavigate()
   const location = useLocation()
   const { signOut, isSigningOut } = useAuth()
-  const { theme, toggle } = useTheme()
+  const { theme, effective, setTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [themeOpen, setThemeOpen] = useState(false)
 
   const navItems = [
     { label: 'Browse', path: '/browse' },
@@ -85,27 +86,64 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
 
             <div className="hidden md:flex items-center gap-2">
               <span className="text-warm-500 text-sm truncate max-w-[180px] xl:max-w-[240px]">{user.email}</span>
-              <button
-                onClick={toggle}
-                className="flex items-center gap-1.5 bg-warm-100 hover:bg-warm-200 text-warm-700 hover:text-crimson px-3 py-1.5 rounded-lg transition text-sm"
-                aria-label={`Theme: ${theme}`}
-                title={`Theme: ${theme}`}
-              >
-                {theme === 'dark' ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              <div className="relative">
+                <button
+                  onClick={() => setThemeOpen(o => !o)}
+                  className="flex items-center gap-1.5 bg-warm-100 hover:bg-warm-200 text-warm-700 hover:text-crimson px-3 py-1.5 rounded-lg transition text-sm"
+                  aria-label={`Theme: ${theme}`}
+                >
+                  {theme === 'dark' ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  ) : theme === 'light' ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                  <span className="capitalize">{theme}</span>
+                  <svg className={`w-3 h-3 transition ${themeOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
-                ) : theme === 'light' ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
+                </button>
+                {themeOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setThemeOpen(false)} />
+                    <div className="absolute right-0 top-full mt-1 w-44 bg-card border border-warm-200 rounded-lg shadow-lg z-20 py-1 overflow-hidden">
+                      {([
+                        { key: 'light', label: 'Light', icon: '☀️' },
+                        { key: 'dark', label: 'Dark', icon: '🌙' },
+                        { key: 'system', label: 'System', icon: '💻' },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.key}
+                          onClick={() => { setTheme(opt.key); setThemeOpen(false) }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition ${
+                            theme === opt.key
+                              ? 'text-crimson bg-warm-100 font-medium'
+                              : 'text-warm-700 hover:bg-warm-50'
+                          }`}
+                        >
+                          <span className="text-base">{opt.icon}</span>
+                          <span className="flex-1 text-left">{opt.label}</span>
+                          {theme === opt.key && (
+                            <svg className="w-4 h-4 text-crimson" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
+                      <div className="border-t border-warm-200 px-4 py-2 text-xs text-warm-500">
+                        {effective === 'dark' ? 'Dark mode active' : 'Light mode active'}
+                      </div>
+                    </div>
+                  </>
                 )}
-                <span className="capitalize">{theme}</span>
-              </button>
+              </div>
               <button
                 onClick={signOut}
                 disabled={isSigningOut}
@@ -152,20 +190,39 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
               })}
               <div className="border-t border-warm-200 pt-3 mt-3 space-y-1">
                 <span className="block px-4 py-2 text-sm text-warm-500 truncate">{user.email}</span>
-                <button
-                  onClick={() => { toggle(); setMobileMenuOpen(false) }}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-sm text-warm-600 hover:text-crimson hover:bg-warm-50 rounded-lg transition"
-                >
-                  {theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '💻'}
-                  <span>Theme: <span className="capitalize">{theme}</span></span>
-                </button>
-                <button
-                  onClick={() => { signOut(); setMobileMenuOpen(false) }}
-                  disabled={isSigningOut}
-                  className="w-full text-left px-4 py-3 text-sm text-warm-600 hover:text-crimson hover:bg-warm-50 rounded-lg transition"
-                >
-                  {isSigningOut ? 'Signing out...' : 'Sign Out'}
-                </button>
+                <p className="px-4 py-1 text-xs text-warm-500 font-medium">Theme</p>
+                {([
+                  { key: 'light', label: 'Light', icon: '☀️' },
+                  { key: 'dark', label: 'Dark', icon: '🌙' },
+                  { key: 'system', label: 'System', icon: '💻' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.key}
+                    onClick={() => { setTheme(opt.key); setMobileMenuOpen(false) }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-lg transition ${
+                      theme === opt.key
+                        ? 'text-crimson bg-warm-100 font-medium'
+                        : 'text-warm-600 hover:text-crimson hover:bg-warm-50'
+                    }`}
+                  >
+                    <span className="text-base">{opt.icon}</span>
+                    <span className="flex-1 text-left">{opt.label}</span>
+                    {theme === opt.key && (
+                      <svg className="w-4 h-4 text-crimson" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+                <div className="border-t border-warm-200 pt-2 mt-2">
+                  <button
+                    onClick={() => { signOut(); setMobileMenuOpen(false) }}
+                    disabled={isSigningOut}
+                    className="w-full text-left px-4 py-3 text-sm text-warm-600 hover:text-crimson hover:bg-warm-50 rounded-lg transition"
+                  >
+                    {isSigningOut ? 'Signing out...' : 'Sign Out'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

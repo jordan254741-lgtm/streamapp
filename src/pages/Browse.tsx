@@ -2,6 +2,7 @@ import type { User } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
+import Layout from '../components/Layout'
 import ContentRow from '../components/movies/ContentRow'
 import VirtualMovieGrid from '../components/movies/VirtualMovieGrid'
 import {
@@ -138,9 +139,8 @@ export default function Browse({ user }: Props) {
   const setTabWithParams = (t: Tab) => { setTab(t); setSearchParams({ tab: t }) }
 
   return (
-    <div className="min-h-screen bg-warm-50">
-      <div className="max-w-screen-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <Layout user={user} maxWidth="3xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-warm-900">Browse</h1>
             <p className="text-warm-600 mt-1 text-sm">Discover movies and series</p>
@@ -234,7 +234,6 @@ export default function Browse({ user }: Props) {
             }}
           />
         )}
-      </div>
-    </div>
+    </Layout>
   )
 }

@@ -6,7 +6,8 @@ import { supabase } from '../lib/supabase'
 
 export default function Register() {
   const navigate = useNavigate()
-  const { theme, toggle } = useTheme()
+  const { theme, setTheme } = useTheme()
+  const [themeOpen, setThemeOpen] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -28,13 +29,45 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-warm-50 flex items-center justify-center px-4 relative">
-      <button
-        onClick={toggle}
-        className="absolute top-4 right-4 flex items-center gap-1.5 bg-card border border-warm-200 hover:bg-warm-100 text-warm-700 hover:text-crimson px-3 py-1.5 rounded-lg transition text-sm shadow-sm"
-      >
-        {theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '💻'}
-        <span className="capitalize hidden sm:inline">{theme}</span>
-      </button>
+      <div className="absolute top-4 right-4">
+        <button
+          onClick={() => setThemeOpen(o => !o)}
+          className="flex items-center gap-1.5 bg-card border border-warm-200 hover:bg-warm-100 text-warm-700 hover:text-crimson px-3 py-1.5 rounded-lg transition text-sm shadow-sm"
+        >
+          {theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '💻'}
+          <span className="capitalize hidden sm:inline">{theme}</span>
+        </button>
+        {themeOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setThemeOpen(false)} />
+            <div className="absolute right-0 top-full mt-1 w-40 bg-card border border-warm-200 rounded-lg shadow-lg z-20 py-1 overflow-hidden">
+              {([
+                { key: 'light', label: 'Light', icon: '☀️' },
+                { key: 'dark', label: 'Dark', icon: '🌙' },
+                { key: 'system', label: 'System', icon: '💻' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.key}
+                  onClick={() => { setTheme(opt.key); setThemeOpen(false) }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition ${
+                    theme === opt.key
+                      ? 'text-crimson bg-warm-100 font-medium'
+                      : 'text-warm-700 hover:bg-warm-50'
+                  }`}
+                >
+                  <span className="text-base">{opt.icon}</span>
+                  <span className="flex-1 text-left">{opt.label}</span>
+                  {theme === opt.key && (
+                    <svg className="w-4 h-4 text-crimson" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-crimson">StreamApp</h1>

@@ -29,6 +29,7 @@ export default function ContentRow({ title, items: propItems, fetchFn, onItemCli
   const [canScrollRight, setCanScrollRight] = useState(true)
   const [fetchedItems, setFetchedItems] = useState<Movie[]>([])
   const [fetching, setFetching] = useState(!!fetchFn && !propItems)
+  const [collapsed, setCollapsed] = useState(true)
 
   const items = propItems ?? fetchedItems
 
@@ -71,9 +72,20 @@ export default function ContentRow({ title, items: propItems, fetchFn, onItemCli
   if (items.length === 0 && !fetching) return null
 
   return (
-    <div className="mb-6 sm:mb-8">
+    <div className="mb-4 sm:mb-8">
       <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <h2 className="text-base sm:text-lg lg:text-xl font-bold text-warm-900">{title}</h2>
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          className="flex items-center gap-2 text-base sm:text-lg lg:text-xl font-bold text-warm-900 hover:text-crimson transition sm:cursor-default"
+        >
+          {title}
+          <svg
+            className={`w-4 h-4 text-warm-400 transition sm:hidden ${collapsed ? '' : 'rotate-180'}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
         {!fetching && (
           <div className="flex items-center gap-2">
             <button
@@ -105,7 +117,7 @@ export default function ContentRow({ title, items: propItems, fetchFn, onItemCli
           </div>
         )}
       </div>
-      <div className="relative">
+      <div className={`relative ${collapsed ? 'hidden sm:block' : ''}`}>
         {!fetching && canScrollLeft && (
           <div className="absolute left-0 top-0 bottom-2 w-8 bg-gradient-to-r from-warm-50 to-transparent z-10 pointer-events-none" />
         )}
