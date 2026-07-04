@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Grid } from 'react-window'
 
 import type { Movie } from '../../types'
@@ -8,6 +8,7 @@ interface Props {
   movies: Movie[]
   gap?: number
   onMovieClick?: (movie: Movie) => void
+  onLoadMore?: () => void
 }
 
 interface CellExtraProps {
@@ -49,8 +50,9 @@ function getColumnCount(width: number): number {
   return 7
 }
 
-export default function VirtualMovieGrid({ movies, gap = 16, onMovieClick }: Props) {
+export default function VirtualMovieGrid({ movies, gap = 16, onMovieClick, onLoadMore }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const loadingRef = useRef(false)
   const [width, setWidth] = useState(0)
   const [columns, setColumns] = useState(6)
 
@@ -78,6 +80,27 @@ export default function VirtualMovieGrid({ movies, gap = 16, onMovieClick }: Pro
     return { cardWidth, cardHeight }
   }, [width, columns, gap])
 
+  const rowCount = Math.ceil(movies.length / columns)
+  const gridHeight = typeof window !== 'undefined' ? window.innerHeight - 200 : 600
+
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      if (!onLoadMore || loadingRef.current) return
+      const scrollOffset = e.currentTarget.scrollTop
+      const totalHeight = rowCount * (cardHeight + gap)
+      const visibleHeight = e.currentTarget.clientHeight
+      if (scrollOffset + visibleHeight >= totalHeight - visibleHeight * 0.5) {
+        loadingRef.current = true
+        onLoadMore()
+      }
+    },
+    [onLoadMore, rowCount, cardHeight, gap],
+  )
+
+  useEffect(() => {
+    loadingRef.current = false
+  }, [movies.length])
+
   const cellProps = useMemo<CellExtraProps>(
     () => ({ movies, columns, gap, onMovieClick }),
     [movies, columns, gap, onMovieClick],
@@ -104,10 +127,11 @@ export default function VirtualMovieGrid({ movies, gap = 16, onMovieClick }: Pro
         cellProps={cellProps}
         columnCount={columns}
         columnWidth={cardWidth + gap}
-        rowCount={Math.ceil(movies.length / columns)}
+        rowCount={rowCount}
         rowHeight={cardHeight + gap}
-        style={{ height: typeof window !== 'undefined' ? window.innerHeight - 200 : 600, width }}
-        overscanCount={2}
+        overscanCount={3}
+        onScroll={handleScroll}
+        style={{ height: gridHeight, width }}
       />
     </div>
   )

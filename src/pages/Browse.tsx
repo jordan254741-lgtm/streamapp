@@ -1,6 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { FormEvent, useEffect, useRef, useState } from 'react'
+import { FormEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import ErrorBoundary from '../components/ErrorBoundary'
@@ -69,24 +69,6 @@ export default function Browse({ user }: BrowseProps) {
     setSearch(searchInput)
     setActiveGenre(null)
   }
-
-  const sentinelRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!sentinelRef.current || !hasNextPage || isFetchingNextPage) return
-
-    const observer = new IntersectionObserver(
-      entries => {
-        if (entries[0].isIntersecting) {
-          fetchNextPage()
-        }
-      },
-      { rootMargin: '400px' },
-    )
-
-    observer.observe(sentinelRef.current)
-    return () => observer.disconnect()
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
   return (
     <Layout user={user} maxWidth="3xl">
@@ -182,9 +164,9 @@ export default function Browse({ user }: BrowseProps) {
             <VirtualMovieGrid
               movies={movies}
               onMovieClick={(movie) => navigate(`/watch/${movie.id}`)}
+              onLoadMore={hasNextPage ? () => fetchNextPage() : undefined}
             />
           </ErrorBoundary>
-          <div ref={sentinelRef} className="h-10" />
           {isFetchingNextPage && (
             <div className="flex justify-center py-8">
               <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
