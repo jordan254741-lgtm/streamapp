@@ -23,7 +23,9 @@ export default function ContentRow({ title, items: propItems, fetchFn, onItemCli
     if (!fetchFn || propItems) return
     let cancelled = false
     fetchFn(1)
-      .then(data => { if (!cancelled) setFetchedItems(data) })
+      .then((data: any) => {
+        if (!cancelled) setFetchedItems(Array.isArray(data) ? data : (data?.results || []))
+      })
       .catch(console.error)
     return () => { cancelled = true }
   }, [fetchFn, propItems])

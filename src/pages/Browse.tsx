@@ -1,16 +1,14 @@
 import type { User } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import ContentRow from '../components/movies/ContentRow'
 import VirtualMovieGrid from '../components/movies/VirtualMovieGrid'
 import {
-  fetchMovieDetails,
   fetchNowPlaying,
   fetchPopularMovies,
   fetchTopRated,
   fetchTrending,
-  fetchTvDetails,
   fetchUpcoming,
   searchMovies,
   searchTv,
@@ -49,6 +47,7 @@ interface Props {
 type Tab = 'movies' | 'series' | 'trending'
 
 export default function Browse({ user }: Props) {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [tab, setTab] = useState<Tab>((searchParams.get('tab') as Tab) || 'movies')
@@ -73,9 +72,10 @@ export default function Browse({ user }: Props) {
     setLoadingMore(true)
     try {
       const nextPage = page + 1
-      const newMovies = tab === 'trending'
+      const data = tab === 'trending'
         ? await fetchTrending(nextPage)
         : await fetchPopularMovies(nextPage)
+      const newMovies: Movie[] = data?.results || []
       setMovies(prev => [...prev, ...newMovies])
       setPage(nextPage)
       setHasMore(newMovies.length > 0)
@@ -88,10 +88,12 @@ export default function Browse({ user }: Props) {
       setInitialLoading(true)
       try {
         if (query.trim()) {
-          const [movieResults, tvResults] = await Promise.all([
+          const [movieRes, tvRes] = await Promise.all([
             searchMovies(query, 1),
             searchTv(query, 1),
           ])
+          const movieResults = movieRes?.results || []
+          const tvResults = tvRes?.results || []
           const merged = tab === 'movies'
             ? movieResults
             : tab === 'series'
@@ -103,7 +105,7 @@ export default function Browse({ user }: Props) {
             ? [fetchTrending(1)]
             : [fetchPopularMovies(1), fetchNowPlaying(1), fetchTopRated(1), fetchUpcoming(1)]
           const results = await Promise.all(detailPromises)
-          const all = results.flat()
+          const all = results.flatMap(r => r?.results || [])
           const seen = new Set<number>()
           const unique: Movie[] = []
           for (const m of all) { if (!seen.has(m.id)) { seen.add(m.id); unique.push(m) } }
@@ -125,8 +127,8 @@ export default function Browse({ user }: Props) {
       setInitialLoading(true)
       try {
         const isTv = tab === 'series'
-        const results = await fetchDiscoverTv(selectedGenre)
-        if (!cancelled) { setMovies(results); setHasMore(false) }
+        const res = await fetchDiscoverTv(selectedGenre)
+        if (!cancelled) { setMovies(res?.results || []); setHasMore(false) }
       } catch (e) { console.error(e) } finally { if (!cancelled) setInitialLoading(false) }
     }
     load()
@@ -200,10 +202,10 @@ export default function Browse({ user }: Props) {
           </div>
         ) : !query && selectedGenre === null && tab !== 'trending' ? (
           <div>
-            <ContentRow title="Trending Now" fetchFn={fetchTrending} onMovieClick={(id, m) => {}} />
-            <ContentRow title="Latest Releases" fetchFn={fetchNowPlaying} onMovieClick={(id, m) => {}} />
-            <ContentRow title="Top Rated" fetchFn={fetchTopRated} onMovieClick={(id, m) => {}} />
-            <ContentRow title="Upcoming" fetchFn={fetchUpcoming} onMovieClick={(id, m) => {}} />
+            <ContentRow title="Trending Now" fetchFn={fetchTrending} onItemClick={m => navigate(m.media_type === 'tv' ? `/watch/tv/${m.id}` : `/watch/${m.id}`)} />
+            <ContentRow title="Latest Releases" fetchFn={fetchNowPlaying} onItemClick={m => navigate(m.media_type === 'tv' ? `/watch/tv/${m.id}` : `/watch/${m.id}`)} />
+            <ContentRow title="Top Rated" fetchFn={fetchTopRated} onItemClick={m => navigate(m.media_type === 'tv' ? `/watch/tv/${m.id}` : `/watch/${m.id}`)} />
+            <ContentRow title="Upcoming" fetchFn={fetchUpcoming} onItemClick={m => navigate(m.media_type === 'tv' ? `/watch/tv/${m.id}` : `/watch/${m.id}`)} />
             <div className="mt-8">
               <h2 className="text-xl font-semibold text-warm-900 mb-4">Browse All</h2>
               <VirtualMovieGrid
