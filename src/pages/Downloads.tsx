@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 
 import { supabase } from '../lib/supabase'
-import type { Movie } from '../types'
 
 interface Props {
   user: { id: string }

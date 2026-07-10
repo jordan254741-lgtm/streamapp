@@ -2,8 +2,8 @@ import type { User } from '@supabase/supabase-js'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
+import { useTheme } from '../contexts/useTheme'
 import { useAuth } from '../hooks/useAuth'
-import { useTheme } from '../contexts/ThemeContext'
 
 interface LayoutProps {
   user: User

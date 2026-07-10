@@ -12,3 +12,10 @@ Replaced the cycling toggle button with a proper dropdown selector on all pages:
 ## Browse Page Wrapped in Layout
 
 `src/pages/Browse.tsx` was rendering standalone with no header/nav. Wrapped it in `<Layout user={user} maxWidth="3xl">` so the nav bar (with theme dropdown, sign out, nav links) appears on the dashboard. Removed the outer wrapper divs (`min-h-screen bg-warm-50`, `max-w-screen-3xl`) since Layout provides them.
+
+## OAuth Sign-In (Google/Apple/GitHub)
+
+- **Login.tsx / Register.tsx** (`src/pages/`) — Added Google, Apple, and GitHub SSO buttons above the email form, separated by an "Or continue with email" divider. Icons are inline SVGs. Theme picker dropdown buttons updated from emoji to SVG icons with chevron.
+- **AuthCallback.tsx** (`src/pages/AuthCallback.tsx`) — New page at `/auth/callback` that calls `supabase.auth.exchangeCodeForSession()` with the OAuth code, then navigates to `/browse`. Added route in `App.tsx`.
+- **useTheme.ts** (`src/contexts/useTheme.ts`) — Extracted `useTheme` hook into its own file; `ThemeContext` export is now directly exported for use by the hook.
+- **Code cleanups** — Removed unused imports across multiple files, fixed `ContentRow` type from `any` to `Movie[]`, refactored `Watch.tsx` source selector logic.

@@ -5,8 +5,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import ErrorBoundary from '../components/ErrorBoundary'
 import Layout from '../components/Layout'
 import SaveForLaterButton from '../components/SaveForLaterButton'
-import { fetchMovieBoxSource, fetchMovieDetails, fetchTvDetails, getEmbedSources } from '../lib/movie-api'
 import type { MovieDetailsResponse, TvDetailsResponse } from '../lib/movie-api'
+import { fetchMovieBoxSource, fetchMovieDetails, fetchTvDetails, getEmbedSources } from '../lib/movie-api'
 import type { CastMember, MediaType, Movie } from '../types'
 
 const IMG = 'https://image.tmdb.org/t/p'
@@ -101,12 +101,10 @@ export default function Watch({ user }: WatchProps) {
       }
 
       setSources(embedSources)
-      if (embedSources.length > 0) {
-        const stillExists = embedSources.some(s => s.key === activeSource)
-        if (!stillExists) {
-          setActiveSource(embedSources[0].key)
-        }
-      }
+      setActiveSource(prev => {
+        if (embedSources.length === 0) return prev
+        return embedSources.some(s => s.key === prev) ? prev : embedSources[0].key
+      })
     } catch (err) {
       console.error('Failed to load:', err)
     } finally {

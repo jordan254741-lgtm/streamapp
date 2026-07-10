@@ -6,6 +6,7 @@ import Layout from '../components/Layout'
 import ContentRow from '../components/movies/ContentRow'
 import VirtualMovieGrid from '../components/movies/VirtualMovieGrid'
 import {
+  fetchDiscoverTv,
   fetchNowPlaying,
   fetchPopularMovies,
   fetchTopRated,
@@ -13,9 +14,8 @@ import {
   fetchUpcoming,
   searchMovies,
   searchTv,
-  fetchDiscoverTv,
 } from '../lib/movie-api'
-import type { Movie, Genre } from '../types'
+import type { Genre,Movie } from '../types'
 
 const MOVIE_GENRES: Genre[] = [
   { id: 28, name: 'Action' }, { id: 12, name: 'Adventure' },
@@ -127,7 +127,6 @@ export default function Browse({ user }: Props) {
     const load = async () => {
       setInitialLoading(true)
       try {
-        const isTv = tab === 'series'
         const res = await fetchDiscoverTv(selectedGenre)
         if (!cancelled) { setMovies(res?.results || []); setHasMore(false) }
       } catch (e) { console.error(e) } finally { if (!cancelled) setInitialLoading(false) }

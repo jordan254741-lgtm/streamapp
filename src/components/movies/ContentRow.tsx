@@ -38,7 +38,7 @@ export default function ContentRow({ title, items: propItems, fetchFn, onItemCli
     setFetching(true)
     let cancelled = false
     fetchFn(1)
-      .then((data: any) => {
+      .then((data: Movie[]) => {
         if (!cancelled) setFetchedItems(Array.isArray(data) ? data : (data?.results || []))
       })
       .catch(console.error)

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useEffect, useState } from 'react'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -9,7 +9,8 @@ interface ThemeContextValue {
   toggle: () => void
 }
 
-const ThemeContext = createContext<ThemeContextValue | null>(null)
+// eslint-disable-next-line react-refresh/only-export-components
+export const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 function getSystemTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light'
@@ -20,7 +21,7 @@ function getStoredTheme(): Theme {
   try {
     const stored = localStorage.getItem('streamapp-theme')
     if (stored === 'light' || stored === 'dark' || stored === 'system') return stored
-  } catch {}
+  } catch { /* ignore */ }
   return 'system'
 }
 
@@ -36,7 +37,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t)
-    try { localStorage.setItem('streamapp-theme', t) } catch {}
+    try { localStorage.setItem('streamapp-theme', t) } catch { /* ignore */ }
     setEffective(applyTheme(t))
   }, [])
 
@@ -61,8 +62,4 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function useTheme() {
-  const ctx = useContext(ThemeContext)
-  if (!ctx) throw new Error('useTheme must be used within ThemeProvider')
-  return ctx
-}
+

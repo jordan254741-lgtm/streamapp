@@ -1,7 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 
-import ErrorBoundary from '../components/ErrorBoundary'
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
 import type { Request } from '../types'

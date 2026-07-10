@@ -8,6 +8,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { validateEnv } from './lib/env'
 import { queryClient } from './lib/query-client'
 import { supabase } from './lib/supabase'
+import AuthCallback from './pages/AuthCallback'
 import Browse from './pages/Browse'
 import Downloads from './pages/Downloads'
 import Login from './pages/Login'
@@ -71,6 +72,7 @@ function AppContent() {
           <Route path="/" element={<Navigate to={user ? '/browse' : '/login'} replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route
             path="/browse"
             element={user ? <Browse user={user} /> : <Navigate to="/login" replace />}
