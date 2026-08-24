@@ -12,6 +12,7 @@ import AuthCallback from './pages/AuthCallback'
 import Browse from './pages/Browse'
 import Downloads from './pages/Downloads'
 import Login from './pages/Login'
+import Person from './pages/Person'
 import Register from './pages/Register'
 import Requests from './pages/Requests'
 import Watch from './pages/Watch'
@@ -84,6 +85,10 @@ function AppContent() {
           <Route
             path="/watch/:type/:id"
             element={user ? <Watch user={user} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/person/:id"
+            element={user ? <Person user={user} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/downloads"

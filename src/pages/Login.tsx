@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { useTheme } from '../contexts/useTheme'
+import { signInWithProvider } from '../lib/oauth'
 import { supabase } from '../lib/supabase'
 
 const OAUTH_PROVIDERS = [
@@ -45,6 +46,8 @@ const Icons = {
 
 export default function Login() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const nextParam = searchParams.get('next') ?? '/browse'
   const { theme, setTheme } = useTheme()
   const [themeOpen, setThemeOpen] = useState(false)
   const [email, setEmail] = useState('')
@@ -55,12 +58,10 @@ export default function Login() {
   const handleOAuth = async (provider: typeof OAUTH_PROVIDERS[number]['id']) => {
     setError('')
     setLoading(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
+    const redirectTo = `${window.location.origin}/auth/callback?type=login&next=${encodeURIComponent(nextParam)}`
+    const outcome = await signInWithProvider(provider, redirectTo)
     setLoading(false)
-    if (error) setError(error.message)
+    if (outcome.status === 'error') setError(outcome.message)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,7 +71,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (error) { setError(error.message); return }
-    navigate('/browse')
+    navigate(nextParam)
   }
 
   return (

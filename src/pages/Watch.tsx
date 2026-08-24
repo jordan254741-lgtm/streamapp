@@ -1,12 +1,14 @@
 import type { User } from '@supabase/supabase-js'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import ErrorBoundary from '../components/ErrorBoundary'
 import Layout from '../components/Layout'
 import SaveForLaterButton from '../components/SaveForLaterButton'
+import { downloadVideo } from '../lib/download'
 import type { MovieDetailsResponse, TvDetailsResponse } from '../lib/movie-api'
 import { fetchMovieBoxSource, fetchMovieDetails, fetchTvDetails, getEmbedSources } from '../lib/movie-api'
+import { supabase } from '../lib/supabase'
 import type { CastMember, MediaType, Movie } from '../types'
 
 const IMG = 'https://image.tmdb.org/t/p'
@@ -60,62 +62,70 @@ export default function Watch({ user }: WatchProps) {
   const [activeSource, setActiveSource] = useState<string>('')
   const [iframeLoading, setIframeLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  const [downloadState, setDownloadState] = useState<'idle' | 'resolving' | 'downloading' | 'done'>('idle')
+  const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
+  const [downloadNote, setDownloadNote] = useState<string | null>(null)
 
   const isTv = isTvRoute(routeType)
   const mediaType: MediaType = isTv ? 'tv' : 'movie'
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const tmdbId = Number(id)
-      const data = isTv ? await fetchTvDetails(tmdbId) : await fetchMovieDetails(tmdbId)
-
-      const title = isTv
-        ? (data as TvDetailsResponse).name
-        : (data as MovieDetailsResponse).title
-      const releaseDate = isTv
-        ? (data as TvDetailsResponse).first_air_date || ''
-        : (data as MovieDetailsResponse).release_date
-
-      setMedia({
-        id: data.id,
-        title,
-        overview: data.overview,
-        poster_path: data.poster_path,
-        backdrop_path: data.backdrop_path,
-        release_date: releaseDate,
-        vote_average: data.vote_average,
-        runtime: !isTv ? (data as MovieDetailsResponse).runtime : undefined,
-        genres: data.genres,
-      })
-
-      setCast((data.credits?.cast || []).slice(0, 8))
-      setSimilar((data.similar?.results || []).slice(0, 6))
-
-      const embedSources = getEmbedSources(tmdbId, mediaType)
-
-      const year = releaseDate ? releaseDate.split('-')[0] : ''
-      const mbUrl = await fetchMovieBoxSource(title, year)
-      if (mbUrl) {
-        embedSources.unshift({ key: 'moviebox', name: 'MovieBox', embedUrl: mbUrl })
-      }
-
-      setSources(embedSources)
-      setActiveSource(prev => {
-        if (embedSources.length === 0) return prev
-        return embedSources.some(s => s.key === prev) ? prev : embedSources[0].key
-      })
-    } catch (err) {
-      console.error('Failed to load:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [id, isTv, mediaType])
-
   useEffect(() => {
     window.scrollTo(0, 0)
-    fetchData()
-  }, [fetchData])
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      try {
+        const tmdbId = Number(id)
+        const data = isTv ? await fetchTvDetails(tmdbId) : await fetchMovieDetails(tmdbId)
+        if (cancelled) return
+
+        const title = isTv
+          ? (data as TvDetailsResponse).name
+          : (data as MovieDetailsResponse).title
+        const releaseDate = isTv
+          ? (data as TvDetailsResponse).first_air_date || ''
+          : (data as MovieDetailsResponse).release_date
+
+        setMedia({
+          id: data.id,
+          title,
+          overview: data.overview,
+          poster_path: data.poster_path,
+          backdrop_path: data.backdrop_path,
+          release_date: releaseDate,
+          vote_average: data.vote_average,
+          runtime: !isTv ? (data as MovieDetailsResponse).runtime : undefined,
+          genres: data.genres,
+        })
+
+        setCast((data.credits?.cast || []).slice(0, 8))
+        setSimilar((data.similar?.results || []).slice(0, 6))
+
+        const embedSources = getEmbedSources(tmdbId, mediaType)
+        if (cancelled) return
+
+        const year = releaseDate ? releaseDate.split('-')[0] : ''
+        const mbUrl = await fetchMovieBoxSource(title, year)
+        if (cancelled) return
+        if (mbUrl) {
+          embedSources.unshift({ key: 'moviebox', name: 'MovieBox', embedUrl: mbUrl })
+        }
+
+        setSources(embedSources)
+        setActiveSource(prev => {
+          if (embedSources.length === 0) return prev
+          return embedSources.some(s => s.key === prev) ? prev : embedSources[0].key
+        })
+      } catch (err) {
+        if (cancelled) return
+        console.error('Failed to load:', err)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [id, isTv, mediaType])
 
   const activeSourceData = sources.find(s => s.key === activeSource)
   const isMovieBoxSource = activeSource === 'moviebox'
@@ -125,6 +135,72 @@ export default function Watch({ user }: WatchProps) {
     setIframeLoading(true)
     setLoadError(false)
   }
+
+  const sanitizeFilename = (name: string) => name.replace(/[<>:"/\\|?*]+/g, '').trim() || 'video'
+
+  const handleDownload = async () => {
+    if (!media || downloadState === 'resolving' || downloadState === 'downloading') return
+    setDownloadNote(null)
+    setDownloadProgress(null)
+
+    setDownloadState('resolving')
+    try {
+      const activeMbUrl = isMovieBoxSource && activeSourceData ? activeSourceData.embedUrl : null
+      const url =
+        activeMbUrl ||
+        (await fetchMovieBoxSource(
+          media.title,
+          media.release_date ? media.release_date.split('-')[0] : '',
+        ))
+
+      if (!url) {
+        setDownloadState('idle')
+        setDownloadNote('No direct download source is available for this title. Try the "Save for Later" queue instead.')
+        return
+      }
+
+      setDownloadState('downloading')
+      const filename = `${sanitizeFilename(media.title)}${year !== 'N/A' ? ` (${year})` : ''}.mp4`
+      const result = await downloadVideo(url, filename, (received, total) => {
+        setDownloadProgress(total ? Math.min(100, Math.round((received / total) * 100)) : null)
+      })
+
+      await supabase.from('downloads').insert({
+        user_id: user.id,
+        tmdb_id: media.id,
+        title: media.title,
+        poster_url: media.poster_path ? `${IMG}/w500${media.poster_path}` : '',
+        quality: '720p',
+        status: 'completed',
+      })
+
+      setDownloadState('done')
+      setDownloadNote(
+        result === 'saved-to-folder'
+          ? `Saved "${filename}" to your chosen folder.`
+          : `Saved "${filename}" to your browser's Downloads folder.`,
+      )
+    } catch (err) {
+      console.error('Download failed:', err)
+      if ((err as DOMException)?.name === 'AbortError') {
+        setDownloadState('idle')
+        return
+      }
+      setDownloadState('idle')
+      setDownloadNote('Download failed. The source may be unavailable — try again or pick another source.')
+    }
+  }
+
+  const downloadLabel =
+    downloadState === 'resolving'
+      ? 'Finding source...'
+      : downloadState === 'downloading'
+      ? downloadProgress !== null
+        ? `Downloading ${downloadProgress}%`
+        : 'Downloading...'
+      : downloadState === 'done'
+      ? '✓ Downloaded'
+      : '⬇ Download'
 
   if (loading) {
     return (
@@ -280,8 +356,8 @@ export default function Watch({ user }: WatchProps) {
               ))}
             </div>
             <p className="text-warm-700 leading-relaxed text-sm sm:text-base">{media.overview}</p>
-            {!isTv && (
-              <div className="mt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              {!isTv && (
                 <SaveForLaterButton
                   movie={{
                     id: media.id,
@@ -296,7 +372,23 @@ export default function Watch({ user }: WatchProps) {
                   }}
                   user={user}
                 />
-              </div>
+              )}
+              {downloadState !== 'done' ? (
+                <button
+                  onClick={handleDownload}
+                  disabled={downloadState === 'resolving' || downloadState === 'downloading'}
+                  className="bg-crimson hover:bg-crimson-hover disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition"
+                >
+                  {downloadLabel}
+                </button>
+              ) : (
+                <span className="text-green-700 text-sm font-medium">✓ Downloaded</span>
+              )}
+            </div>
+            {downloadNote && (
+              <p className={`text-xs mt-2 ${downloadState === 'done' ? 'text-green-700' : 'text-warm-500'}`}>
+                {downloadNote}
+              </p>
             )}
           </div>
         </div>
@@ -306,7 +398,11 @@ export default function Watch({ user }: WatchProps) {
             <h2 className="text-lg sm:text-xl font-bold mb-4 text-warm-900">Cast</h2>
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-2 sm:gap-3">
               {cast.map(person => (
-                <div key={person.id} className="text-center">
+                <div
+                  key={person.id}
+                  onClick={() => navigate(`/person/${person.id}`)}
+                  className="text-center cursor-pointer group"
+                >
                   <img
                     src={
                       person.profile_path
@@ -314,9 +410,9 @@ export default function Watch({ user }: WatchProps) {
                         : 'https://placehold.co/185x278/e5dcda/6b5050?text=?'
                     }
                     alt={person.name}
-                    className="w-full aspect-[2/3] object-cover rounded-lg mb-1"
+                    className="w-full aspect-[2/3] object-cover rounded-lg mb-1 group-hover:opacity-80 transition-opacity"
                   />
-                  <p className="text-sm text-warm-700 line-clamp-2">{person.name}</p>
+                  <p className="text-sm text-warm-700 line-clamp-2 group-hover:text-crimson transition-colors">{person.name}</p>
                   <p className="text-xs text-warm-500 line-clamp-1">{person.character}</p>
                 </div>
               ))}

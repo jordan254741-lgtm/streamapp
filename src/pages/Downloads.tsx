@@ -12,7 +12,7 @@ interface DownloadItem {
   title: string
   poster_url: string
   quality: '480p' | '720p' | '1080p'
-  status: 'pending' | 'ready' | 'failed'
+  status: 'pending' | 'ready' | 'completed' | 'failed'
   created_at: string
   progress?: number
 }
@@ -25,8 +25,16 @@ const qualityColors: Record<string, string> = {
 
 const statusColors: Record<string, string> = {
   ready: 'text-green-700 bg-green-50',
+  completed: 'text-green-700 bg-green-50',
   pending: 'text-warm-600 bg-warm-100',
   failed: 'text-crimson bg-red-50',
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  ready: '✓ Ready',
+  completed: '✓ Downloaded',
+  pending: '⏳ Pending',
+  failed: '✗ Failed',
 }
 
 export default function Downloads({ user }: Props) {
@@ -36,13 +44,20 @@ export default function Downloads({ user }: Props) {
   useEffect(() => {
     if (!user?.id) return
     let cancelled = false
-    supabase
-      .from('downloads')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => { if (!cancelled) setDownloads((data as DownloadItem[]) || []) })
-      .finally(() => { if (!cancelled) setLoading(false) })
+    ;(async () => {
+      try {
+        const { data } = await supabase
+          .from('downloads')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+        if (!cancelled) setDownloads((data as DownloadItem[]) || [])
+      } catch (err) {
+        console.error(err)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
     return () => { cancelled = true }
   }, [user?.id])
 
@@ -88,7 +103,7 @@ export default function Downloads({ user }: Props) {
               <div className="p-3">
                 <h4 className="text-sm font-semibold text-warm-900 truncate">{dl.title}</h4>
                 <p className={`text-xs font-medium mt-1 ${statusColors[dl.status]?.split(' ')[0] || 'text-warm-600'}`}>
-                  {dl.status === 'ready' ? '✓ Ready' : dl.status === 'pending' ? '⏳ Pending' : '✗ Failed'}
+                  {STATUS_LABELS[dl.status] || dl.status}
                 </p>
               </div>
             </div>

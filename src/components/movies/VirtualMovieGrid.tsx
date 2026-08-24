@@ -10,6 +10,7 @@ interface Props {
   loadingMore?: boolean
   hasMore?: boolean
   gap?: number
+  emptyMessage?: string
   onMovieClick?: (movie: Movie) => void
   onSelect?: (id: number) => void
   onLoadMore?: () => void
@@ -62,7 +63,7 @@ function getColumnCount(width: number): number {
   return 7
 }
 
-export default function VirtualMovieGrid({ movies, loading, loadingMore, hasMore, gap = 16, onMovieClick, onSelect, onLoadMore }: Props) {
+export default function VirtualMovieGrid({ movies, loading, loadingMore, hasMore, gap = 16, emptyMessage, onMovieClick, onSelect, onLoadMore }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [columns, setColumns] = useState(6)
@@ -127,7 +128,7 @@ export default function VirtualMovieGrid({ movies, loading, loadingMore, hasMore
   if (width === 0 || movies.length === 0) {
     return (
       <div ref={containerRef} className="w-full">
-        {movies.length > 0 && (
+        {movies.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
             {movies.map(movie => {
               const handleClick = () => {
@@ -138,6 +139,14 @@ export default function VirtualMovieGrid({ movies, loading, loadingMore, hasMore
                 <MovieCard key={movie.id} movie={movie} onClick={handleClick} />
               )
             })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 text-warm-500">
+            <svg className="w-12 h-12 mb-4 text-warm-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+            </svg>
+            <p className="text-lg font-medium">{emptyMessage || 'No results found'}</p>
+            <p className="text-sm mt-1">Try a different genre or tab</p>
           </div>
         )}
       </div>

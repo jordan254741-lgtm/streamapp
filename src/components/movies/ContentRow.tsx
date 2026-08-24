@@ -16,14 +16,15 @@ function SkeletonCard() {
 }
 
 interface ContentRowProps {
-  title: string
+  title?: string
   items?: Movie[]
-  fetchFn?: (page?: number) => Promise<Movie[]>
+  fetchFn?: (page?: number) => Promise<{ results: Movie[] }>
   onItemClick?: (movie: Movie) => void
   onMovieClick?: (id: number, movie: Movie) => void
+  noHeader?: boolean
 }
 
-export default function ContentRow({ title, items: propItems, fetchFn, onItemClick, onMovieClick }: ContentRowProps) {
+export default function ContentRow({ title = '', items: propItems, fetchFn, onItemClick, onMovieClick, noHeader }: ContentRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
@@ -38,8 +39,8 @@ export default function ContentRow({ title, items: propItems, fetchFn, onItemCli
     setFetching(true)
     let cancelled = false
     fetchFn(1)
-      .then((data: Movie[]) => {
-        if (!cancelled) setFetchedItems(Array.isArray(data) ? data : (data?.results || []))
+      .then(data => {
+        if (!cancelled) setFetchedItems(data?.results || [])
       })
       .catch(console.error)
       .finally(() => { if (!cancelled) setFetching(false) })
@@ -73,51 +74,53 @@ export default function ContentRow({ title, items: propItems, fetchFn, onItemCli
 
   return (
     <div className="mb-4 sm:mb-8">
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <button
-          onClick={() => setCollapsed(c => !c)}
-          className="flex items-center gap-2 text-base sm:text-lg lg:text-xl font-bold text-warm-900 hover:text-crimson transition sm:cursor-default"
-        >
-          {title}
-          <svg
-            className={`w-4 h-4 text-warm-400 transition sm:hidden ${collapsed ? '' : 'rotate-180'}`}
-            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+      {!noHeader && (
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            className="flex items-center gap-2 text-base sm:text-lg lg:text-xl font-bold text-warm-900 hover:text-crimson transition sm:cursor-default"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        {!fetching && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => scroll('left')}
-              className={`p-1.5 rounded-full transition ${
-                canScrollLeft
-                  ? 'bg-warm-100 text-warm-600 hover:bg-warm-200 hover:text-warm-900'
-                  : 'bg-warm-100/50 text-warm-400 cursor-default'
-              }`}
-              aria-label="Scroll left"
+            {title}
+            <svg
+              className={`w-4 h-4 text-warm-400 transition sm:hidden ${collapsed ? '' : 'rotate-180'}`}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button
-              onClick={() => scroll('right')}
-              className={`p-1.5 rounded-full transition ${
-                canScrollRight
-                  ? 'bg-warm-100 text-warm-600 hover:bg-warm-200 hover:text-warm-900'
-                  : 'bg-warm-100/50 text-warm-400 cursor-default'
-              }`}
-              aria-label="Scroll right"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        )}
-      </div>
-      <div className={`relative ${collapsed ? 'hidden sm:block' : ''}`}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {!fetching && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => scroll('left')}
+                className={`p-1.5 rounded-full transition ${
+                  canScrollLeft
+                    ? 'bg-warm-100 text-warm-600 hover:bg-warm-200 hover:text-warm-900'
+                    : 'bg-warm-100/50 text-warm-400 cursor-default'
+                }`}
+                aria-label="Scroll left"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => scroll('right')}
+                className={`p-1.5 rounded-full transition ${
+                  canScrollRight
+                    ? 'bg-warm-100 text-warm-600 hover:bg-warm-200 hover:text-warm-900'
+                    : 'bg-warm-100/50 text-warm-400 cursor-default'
+                }`}
+                aria-label="Scroll right"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      <div className={`relative ${noHeader ? '' : (collapsed ? 'hidden sm:block' : '')}`}>
         {!fetching && canScrollLeft && (
           <div className="absolute left-0 top-0 bottom-2 w-8 bg-gradient-to-r from-warm-50 to-transparent z-10 pointer-events-none" />
         )}

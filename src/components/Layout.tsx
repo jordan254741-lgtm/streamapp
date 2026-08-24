@@ -115,9 +115,9 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
                     <div className="fixed inset-0 z-10" onClick={() => setThemeOpen(false)} />
                     <div className="absolute right-0 top-full mt-1 w-44 bg-card border border-warm-200 rounded-lg shadow-lg z-20 py-1 overflow-hidden">
                       {([
-                        { key: 'light', label: 'Light', icon: '☀️' },
-                        { key: 'dark', label: 'Dark', icon: '🌙' },
-                        { key: 'system', label: 'System', icon: '💻' },
+                        { key: 'light', label: 'Light' },
+                        { key: 'dark', label: 'Dark' },
+                        { key: 'system', label: 'System' },
                       ] as const).map(opt => (
                         <button
                           key={opt.key}
@@ -128,10 +128,22 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
                               : 'text-warm-700 hover:bg-warm-50'
                           }`}
                         >
-                          <span className="text-base">{opt.icon}</span>
+                          {opt.key === 'light' ? (
+                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                          ) : opt.key === 'dark' ? (
+                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                          )}
                           <span className="flex-1 text-left">{opt.label}</span>
                           {theme === opt.key && (
-                            <svg className="w-4 h-4 text-crimson" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-4 h-4 text-crimson shrink-0" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           )}
@@ -192,9 +204,9 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
                 <span className="block px-4 py-2 text-sm text-warm-500 truncate">{user.email}</span>
                 <p className="px-4 py-1 text-xs text-warm-500 font-medium">Theme</p>
                 {([
-                  { key: 'light', label: 'Light', icon: '☀️' },
-                  { key: 'dark', label: 'Dark', icon: '🌙' },
-                  { key: 'system', label: 'System', icon: '💻' },
+                  { key: 'light', label: 'Light' },
+                  { key: 'dark', label: 'Dark' },
+                  { key: 'system', label: 'System' },
                 ] as const).map(opt => (
                   <button
                     key={opt.key}
@@ -205,10 +217,22 @@ export default function Layout({ user, children, maxWidth = '7xl', showBack, bac
                         : 'text-warm-600 hover:text-crimson hover:bg-warm-50'
                     }`}
                   >
-                    <span className="text-base">{opt.icon}</span>
+                    {opt.key === 'light' ? (
+                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                    ) : opt.key === 'dark' ? (
+                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    )}
                     <span className="flex-1 text-left">{opt.label}</span>
                     {theme === opt.key && (
-                      <svg className="w-4 h-4 text-crimson" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-4 h-4 text-crimson shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}

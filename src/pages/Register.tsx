@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { useTheme } from '../contexts/useTheme'
+import { signInWithProvider } from '../lib/oauth'
 import { supabase } from '../lib/supabase'
 
 const OAUTH_PROVIDERS = [
@@ -45,6 +46,8 @@ const Icons = {
 
 export default function Register() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const nextParam = searchParams.get('next') ?? '/browse'
   const { theme, setTheme } = useTheme()
   const [themeOpen, setThemeOpen] = useState(false)
   const [email, setEmail] = useState('')
@@ -57,12 +60,10 @@ export default function Register() {
   const handleOAuth = async (provider: typeof OAUTH_PROVIDERS[number]['id']) => {
     setError('')
     setLoading(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
+    const redirectTo = `${window.location.origin}/auth/callback?type=register&next=${encodeURIComponent(nextParam)}`
+    const outcome = await signInWithProvider(provider, redirectTo)
     setLoading(false)
-    if (error) setError(error.message)
+    if (outcome.status === 'error') setError(outcome.message)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,11 +71,18 @@ export default function Register() {
     setError('')
     if (password !== confirmPassword) { setError('Passwords do not match'); return }
     setLoading(true)
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({ email, password })
     setLoading(false)
     if (error) { setError(error.message); return }
+    if (data?.user?.identities?.length === 0) {
+      setError('An account with this email already exists. Please sign in instead.')
+      return
+    }
+    if (data?.session) {
+      navigate(nextParam)
+      return
+    }
     setSuccess(true)
-    setTimeout(() => navigate('/login'), 2000)
   }
 
   return (
@@ -140,7 +148,28 @@ export default function Register() {
 
         <div className="bg-card border border-warm-200 rounded-xl p-6 sm:p-8 shadow-sm space-y-4">
           {error && <div className="text-crimson text-sm bg-red-50 p-3 rounded-lg">{error}</div>}
-          {success && <div className="text-green-700 text-sm bg-green-50 p-3 rounded-lg">Account created! Redirecting...</div>}
+          {success && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-green-800 font-semibold mb-1">Account created!</h3>
+              <p className="text-green-700 text-sm mb-2">
+                We've sent a confirmation link to <strong>{email}</strong>.
+              </p>
+              <p className="text-green-700 text-sm mb-4">
+                Please check your email and click the link to verify your account.
+              </p>
+              <button
+                onClick={() => navigate('/login')}
+                className="text-sm text-crimson hover:underline font-medium"
+              >
+                Go to sign in
+              </button>
+            </div>
+          )}
 
           <div className="space-y-3">
             {OAUTH_PROVIDERS.map(provider => (
@@ -152,7 +181,7 @@ export default function Register() {
                 className="w-full flex items-center justify-center gap-2 bg-card border border-warm-200 hover:bg-warm-50 text-warm-700 hover:text-warm-900 py-2.5 rounded-lg transition disabled:opacity-50"
               >
                 <span className="text-warm-600">{Icons[provider.icon]}</span>
-                <span>Continue with {provider.label}</span>
+                <span>Sign up with {provider.label}</span>
               </button>
             ))}
           </div>

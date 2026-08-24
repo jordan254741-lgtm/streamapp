@@ -18,6 +18,7 @@ interface RequestsProps {
 
 export default function Requests({ user }: RequestsProps) {
   const [requests, setRequests] = useState<Request[]>([])
+  const [voteCounts, setVoteCounts] = useState<Record<string, number>>({})
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -30,12 +31,21 @@ export default function Requests({ user }: RequestsProps) {
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
-    const [{ data: reqs }, { data: votes }] = await Promise.all([
-      supabase.from('requests').select('*').order('vote_count', { ascending: false }),
+    const [{ data: reqs }, { data: allVotes }, { data: myVotes }] = await Promise.all([
+      supabase.from('requests').select('*').order('created_at', { ascending: false }),
+      supabase.from('request_votes').select('request_id'),
       supabase.from('request_votes').select('request_id').eq('user_id', user.id),
     ])
-    setRequests((reqs as Request[]) || [])
-    setUserVotes(new Set((votes || []).map(v => (v as { request_id: string }).request_id)))
+    const counts: Record<string, number> = {}
+    for (const v of (allVotes || []) as Array<{ request_id: string }>) {
+      counts[v.request_id] = (counts[v.request_id] || 0) + 1
+    }
+    const sorted = ((reqs as Request[]) || []).sort(
+      (a, b) => (counts[b.id] || 0) - (counts[a.id] || 0),
+    )
+    setRequests(sorted)
+    setVoteCounts(counts)
+    setUserVotes(new Set(((myVotes || []) as Array<{ request_id: string }>).map(v => v.request_id)))
     setLoading(false)
   }, [user.id])
 
@@ -43,27 +53,41 @@ export default function Requests({ user }: RequestsProps) {
     fetchAll()
   }, [fetchAll])
 
+  // Vote counts are aggregated client-side from request_votes because RLS
+  // blocks regular users from updating requests.vote_count directly.
   const handleVote = async (req: Request) => {
     const alreadyVoted = userVotes.has(req.id)
+    const delta = alreadyVoted ? -1 : 1
 
-    if (alreadyVoted) {
-      await supabase.from('request_votes')
-        .delete().eq('user_id', user.id).eq('request_id', req.id)
-      await supabase.from('requests')
-        .update({ vote_count: req.vote_count - 1 }).eq('id', req.id)
-      setUserVotes(prev => { const s = new Set(prev); s.delete(req.id); return s })
-      setRequests(prev => prev.map(r =>
-        r.id === req.id ? { ...r, vote_count: r.vote_count - 1 } : r
-      ))
-    } else {
-      await supabase.from('request_votes')
-        .insert({ user_id: user.id, request_id: req.id })
-      await supabase.from('requests')
-        .update({ vote_count: req.vote_count + 1 }).eq('id', req.id)
-      setUserVotes(prev => new Set([...prev, req.id]))
-      setRequests(prev => prev.map(r =>
-        r.id === req.id ? { ...r, vote_count: r.vote_count + 1 } : r
-      ))
+    setVoteCounts(prev => ({
+      ...prev,
+      [req.id]: Math.max(0, (prev[req.id] ?? req.vote_count) + delta),
+    }))
+    setUserVotes(prev => {
+      const s = new Set(prev)
+      if (alreadyVoted) s.delete(req.id)
+      else s.add(req.id)
+      return s
+    })
+
+    const { error } = alreadyVoted
+      ? await supabase.from('request_votes')
+          .delete().eq('user_id', user.id).eq('request_id', req.id)
+      : await supabase.from('request_votes')
+          .insert({ user_id: user.id, request_id: req.id })
+
+    if (error) {
+      console.error('Vote failed:', error)
+      setVoteCounts(prev => ({
+        ...prev,
+        [req.id]: Math.max(0, (prev[req.id] ?? req.vote_count) - delta),
+      }))
+      setUserVotes(prev => {
+        const s = new Set(prev)
+        if (alreadyVoted) s.add(req.id)
+        else s.delete(req.id)
+        return s
+      })
     }
   }
 
@@ -138,7 +162,7 @@ export default function Requests({ user }: RequestsProps) {
               <p className="text-warm-900 font-semibold">{duplicate.title}
                 {duplicate.release_year && <span className="text-warm-500 font-normal ml-2">({duplicate.release_year})</span>}
               </p>
-              <p className="text-warm-500 text-sm mt-1">{duplicate.vote_count} votes · {duplicate.status}</p>
+              <p className="text-warm-500 text-sm mt-1">{voteCounts[duplicate.id] ?? duplicate.vote_count} votes · {duplicate.status}</p>
               <button
                 onClick={() => { handleVote(duplicate); setShowForm(false) }}
                 className="mt-3 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
@@ -250,7 +274,7 @@ export default function Requests({ user }: RequestsProps) {
                 }`}
               >
                 <span className="text-base sm:text-lg leading-none">▲</span>
-                <span className="text-xs sm:text-sm font-bold mt-1">{req.vote_count}</span>
+                <span className="text-xs sm:text-sm font-bold mt-1">{voteCounts[req.id] ?? req.vote_count}</span>
               </button>
             </div>
           ))}
