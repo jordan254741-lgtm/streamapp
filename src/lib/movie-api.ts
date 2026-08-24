@@ -1,4 +1,5 @@
 import type { MediaType } from '../types'
+import type { SourceKind } from './download'
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_BASE = import.meta.env.VITE_TMDB_BASE_URL || 'https://api.themoviedb.org/3'
@@ -70,7 +71,12 @@ export function getTvEmbedSources(tmdbId: number) {
   return getEmbedSources(tmdbId, 'tv')
 }
 
-export async function fetchMovieBoxSource(title: string, year: string): Promise<string | null> {
+export interface MovieBoxSource {
+  url: string
+  kind: SourceKind
+}
+
+export async function fetchMovieBoxSource(title: string, year: string): Promise<MovieBoxSource | null> {
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10000)
@@ -81,7 +87,8 @@ export async function fetchMovieBoxSource(title: string, year: string): Promise<
     clearTimeout(timeout)
     if (!res.ok) return null
     const data = await res.json()
-    return data.videoUrl || null
+    if (!data.videoUrl) return null
+    return { url: data.videoUrl, kind: (data.kind === 'hls' ? 'hls' : 'mp4') as SourceKind }
   } catch {
     return null
   }

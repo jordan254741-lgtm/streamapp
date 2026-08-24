@@ -5,8 +5,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import ErrorBoundary from '../components/ErrorBoundary'
 import Layout from '../components/Layout'
 import SaveForLaterButton from '../components/SaveForLaterButton'
+import type { SourceKind } from '../lib/download'
 import { downloadVideo } from '../lib/download'
-import type { MovieDetailsResponse, TvDetailsResponse } from '../lib/movie-api'
+import type { MovieBoxSource, MovieDetailsResponse, TvDetailsResponse } from '../lib/movie-api'
 import { fetchMovieBoxSource, fetchMovieDetails, fetchTvDetails, getEmbedSources } from '../lib/movie-api'
 import { supabase } from '../lib/supabase'
 import type { CastMember, MediaType, Movie } from '../types'
@@ -65,6 +66,7 @@ export default function Watch({ user }: WatchProps) {
   const [downloadState, setDownloadState] = useState<'idle' | 'resolving' | 'downloading' | 'done'>('idle')
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
   const [downloadNote, setDownloadNote] = useState<string | null>(null)
+  const [movieBoxSource, setMovieBoxSource] = useState<MovieBoxSource | null>(null)
 
   const isTv = isTvRoute(routeType)
   const mediaType: MediaType = isTv ? 'tv' : 'movie'
@@ -105,10 +107,13 @@ export default function Watch({ user }: WatchProps) {
         if (cancelled) return
 
         const year = releaseDate ? releaseDate.split('-')[0] : ''
-        const mbUrl = await fetchMovieBoxSource(title, year)
+        const mb = await fetchMovieBoxSource(title, year)
         if (cancelled) return
-        if (mbUrl) {
-          embedSources.unshift({ key: 'moviebox', name: 'MovieBox', embedUrl: mbUrl })
+        setMovieBoxSource(mb)
+        // Only offer MovieBox as an in-page player source for plain MP4s;
+        // browsers can't natively play HLS (m3u8) — those stay download-only.
+        if (mb && mb.kind === 'mp4') {
+          embedSources.unshift({ key: 'moviebox', name: 'MovieBox', embedUrl: mb.url })
         }
 
         setSources(embedSources)
@@ -145,23 +150,25 @@ export default function Watch({ user }: WatchProps) {
 
     setDownloadState('resolving')
     try {
-      const activeMbUrl = isMovieBoxSource && activeSourceData ? activeSourceData.embedUrl : null
-      const url =
-        activeMbUrl ||
-        (await fetchMovieBoxSource(
+      let source = movieBoxSource
+      if (!source) {
+        source = await fetchMovieBoxSource(
           media.title,
           media.release_date ? media.release_date.split('-')[0] : '',
-        ))
+        )
+        if (source) setMovieBoxSource(source)
+      }
 
-      if (!url) {
+      if (!source) {
         setDownloadState('idle')
         setDownloadNote('No direct download source is available for this title. Try the "Save for Later" queue instead.')
         return
       }
 
       setDownloadState('downloading')
-      const filename = `${sanitizeFilename(media.title)}${year !== 'N/A' ? ` (${year})` : ''}.mp4`
-      const result = await downloadVideo(url, filename, (received, total) => {
+      const ext = source.kind === 'hls' ? '.ts' : '.mp4'
+      const filename = `${sanitizeFilename(media.title)}${year !== 'N/A' ? ` (${year})` : ''}${ext}`
+      const result = await downloadVideo(source.url, filename, source.kind as SourceKind, (received, total) => {
         setDownloadProgress(total ? Math.min(100, Math.round((received / total) * 100)) : null)
       })
 
@@ -174,19 +181,20 @@ export default function Watch({ user }: WatchProps) {
         status: 'completed',
       })
 
+      const previewHint = result.likelyPreview ? ' (short preview clip — full files are VIP-gated on MovieBox)' : ''
       setDownloadState('done')
       setDownloadNote(
-        result === 'saved-to-folder'
-          ? `Saved "${filename}" to your chosen folder.`
-          : `Saved "${filename}" to your browser's Downloads folder.`,
+        result.mode === 'saved-to-folder'
+          ? `Saved "${filename}" to your chosen folder.${previewHint}`
+          : `Saved "${filename}" to your browser's Downloads folder.${previewHint}`,
       )
     } catch (err) {
       console.error('Download failed:', err)
+      setDownloadState('idle')
       if ((err as DOMException)?.name === 'AbortError') {
-        setDownloadState('idle')
+        setDownloadNote('Download cancelled.')
         return
       }
-      setDownloadState('idle')
       setDownloadNote('Download failed. The source may be unavailable — try again or pick another source.')
     }
   }
@@ -200,7 +208,7 @@ export default function Watch({ user }: WatchProps) {
         : 'Downloading...'
       : downloadState === 'done'
       ? '✓ Downloaded'
-      : '⬇ Download'
+      : 'Download'
 
   if (loading) {
     return (
@@ -278,7 +286,7 @@ export default function Watch({ user }: WatchProps) {
                   </button>
                 ))}
                 {isMovieBoxSource && (
-                  <span className="text-xs text-warm-500 ml-auto hidden sm:inline">5min preview</span>
+                  <span className="text-xs text-warm-500 ml-auto hidden sm:inline">Preview clip</span>
                 )}
               </div>
             )}
