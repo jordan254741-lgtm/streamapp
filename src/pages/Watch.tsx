@@ -67,6 +67,7 @@ export default function Watch({ user }: WatchProps) {
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
   const [downloadNote, setDownloadNote] = useState<string | null>(null)
   const [movieBoxSource, setMovieBoxSource] = useState<MovieBoxSource | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const isTv = isTvRoute(routeType)
   const mediaType: MediaType = isTv ? 'tv' : 'movie'
@@ -143,10 +144,18 @@ export default function Watch({ user }: WatchProps) {
 
   const sanitizeFilename = (name: string) => name.replace(/[<>:"/\\|?*]+/g, '').trim() || 'video'
 
+  const handleCancel = () => {
+    abortControllerRef.current?.abort()
+  }
+
   const handleDownload = async () => {
     if (!media || downloadState === 'resolving' || downloadState === 'downloading') return
     setDownloadNote(null)
     setDownloadProgress(null)
+
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+    const abortSignal = abortController.signal
 
     setDownloadState('resolving')
     try {
@@ -161,16 +170,18 @@ export default function Watch({ user }: WatchProps) {
 
       if (!source) {
         setDownloadState('idle')
+        abortControllerRef.current = null
         setDownloadNote('No direct download source is available for this title. Try the "Save for Later" queue instead.')
         return
       }
 
       setDownloadState('downloading')
+      const yearStr = media.release_date ? media.release_date.split('-')[0] : ''
       const ext = source.kind === 'hls' ? '.ts' : '.mp4'
-      const filename = `${sanitizeFilename(media.title)}${year !== 'N/A' ? ` (${year})` : ''}${ext}`
+      const filename = `${sanitizeFilename(media.title)}${yearStr ? ` (${yearStr})` : ''}${ext}`
       const result = await downloadVideo(source.url, filename, source.kind as SourceKind, (received, total) => {
         setDownloadProgress(total ? Math.min(100, Math.round((received / total) * 100)) : null)
-      })
+      }, abortSignal)
 
       await supabase.from('downloads').insert({
         user_id: user.id,
@@ -183,6 +194,7 @@ export default function Watch({ user }: WatchProps) {
 
       const previewHint = result.likelyPreview ? ' (short preview clip — full files are VIP-gated on MovieBox)' : ''
       setDownloadState('done')
+      abortControllerRef.current = null
       setDownloadNote(
         result.mode === 'saved-to-folder'
           ? `Saved "${filename}" to your chosen folder.${previewHint}`
@@ -191,6 +203,7 @@ export default function Watch({ user }: WatchProps) {
     } catch (err) {
       console.error('Download failed:', err)
       setDownloadState('idle')
+      abortControllerRef.current = null
       if ((err as DOMException)?.name === 'AbortError') {
         setDownloadNote('Download cancelled.')
         return
@@ -382,13 +395,23 @@ export default function Watch({ user }: WatchProps) {
                 />
               )}
               {downloadState !== 'done' ? (
-                <button
-                  onClick={handleDownload}
-                  disabled={downloadState === 'resolving' || downloadState === 'downloading'}
-                  className="bg-crimson hover:bg-crimson-hover disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition"
-                >
-                  {downloadLabel}
-                </button>
+                <>
+                  <button
+                    onClick={handleDownload}
+                    disabled={downloadState === 'resolving' || downloadState === 'downloading'}
+                    className="bg-crimson hover:bg-crimson-hover disabled:opacity-60 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition"
+                  >
+                    {downloadLabel}
+                  </button>
+                  {downloadState === 'downloading' && (
+                    <button
+                      onClick={handleCancel}
+                      className="bg-warm-700 hover:bg-warm-600 text-white px-4 py-2 rounded-lg font-medium transition"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </>
               ) : (
                 <span className="text-green-700 text-sm font-medium">✓ Downloaded</span>
               )}

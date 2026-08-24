@@ -3,10 +3,11 @@ import crypto from 'crypto'
 
 const MOVIEBOX_BASE = 'https://moviebox.ph'
 const API_BASE = 'https://h5-api.aoneroom.com'
+const FETCH_TIMEOUT = 15000
 
 interface SearchHit {
   subjectId: string
-  subjectType: number // 1 = movie, 2 = series
+  subjectType: number
   title: string
   releaseDate?: string
 }
@@ -17,6 +18,7 @@ interface CacheEntry {
 }
 
 let bearerCache: CacheEntry | null = null
+let tokenRefreshPromise: Promise<string | null> | null = null
 
 function generateClientToken(): string {
   const e = Math.floor(Date.now() / 1000)
@@ -39,24 +41,42 @@ function baseHeaders(): Record<string, string> {
   }
 }
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 /** Bootstrap an anonymous bearer token via the x-user response header. */
 async function getBearerToken(): Promise<string | null> {
   if (bearerCache && Date.now() < bearerCache.expiresAt) return bearerCache.token
-  try {
-    const res = await fetch(`${API_BASE}/wefeed-h5api-bff/subject/trending?page=1&perPage=1`, {
-      headers: baseHeaders(),
-    })
-    if (!res.ok) return null
-    const xu = res.headers.get('x-user')
-    if (!xu) return null
-    const token = (JSON.parse(xu) as { token?: string }).token
-    if (!token) return null
-    // refresh well before the JWT's own expiry
-    bearerCache = { token, expiresAt: Date.now() + 60 * 60 * 1000 }
-    return token
-  } catch {
-    return null
-  }
+
+  if (tokenRefreshPromise) return tokenRefreshPromise
+
+  tokenRefreshPromise = (async () => {
+    try {
+      const res = await fetchWithTimeout(`${API_BASE}/wefeed-h5api-bff/subject/trending?page=1&perPage=1`, {
+        headers: baseHeaders(),
+      })
+      if (!res.ok) return null
+      const xu = res.headers.get('x-user')
+      if (!xu) return null
+      const token = (JSON.parse(xu) as { token?: string }).token
+      if (!token) return null
+      bearerCache = { token, expiresAt: Date.now() + 55 * 60 * 1000 }
+      return token
+    } catch {
+      return null
+    } finally {
+      tokenRefreshPromise = null
+    }
+  })()
+
+  return tokenRefreshPromise
 }
 
 interface SearchResponse {
@@ -68,7 +88,7 @@ async function searchTitle(keyword: string): Promise<SearchHit[]> {
   const bearer = await getBearerToken()
   if (!bearer) return []
   try {
-    const res = await fetch(`${API_BASE}/wefeed-h5api-bff/subject/search`, {
+    const res = await fetchWithTimeout(`${API_BASE}/wefeed-h5api-bff/subject/search`, {
       method: 'POST',
       headers: { ...baseHeaders(), Authorization: `Bearer ${bearer}` },
       body: JSON.stringify({ keyword, page: 1, perPage: 12, subjectType: 0 }),
@@ -95,7 +115,7 @@ async function getDetail(subjectId: string): Promise<DetailResponse['data'] | nu
   const bearer = await getBearerToken()
   if (!bearer) return null
   try {
-    const res = await fetch(`${API_BASE}/wefeed-h5api-bff/detail?subjectId=${subjectId}`, {
+    const res = await fetchWithTimeout(`${API_BASE}/wefeed-h5api-bff/detail?subjectId=${subjectId}`, {
       headers: { ...baseHeaders(), Authorization: `Bearer ${bearer}` },
     })
     if (!res.ok) return null
@@ -108,7 +128,7 @@ async function getDetail(subjectId: string): Promise<DetailResponse['data'] | nu
 
 async function fetchHtml(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': baseHeaders()['User-Agent'] } })
+    const res = await fetchWithTimeout(url, { headers: { 'User-Agent': baseHeaders()['User-Agent'] } })
     if (!res.ok) return null
     return await res.text()
   } catch {
@@ -127,10 +147,9 @@ function extractVideoUrls(html: string): string[] {
 
 export function pickBestVideoUrl(urls: string[]): string | null {
   if (urls.length === 0) return null
-  // prefer hd over sd, longer/highest-quality variant last segment wins
   const scored = urls.map(u => {
     let score = 0
-    if (/-(hd|fhd|1080)/i.test(u)) score += 4
+    if (/-(hd|fhd|1080|2160|4k)/i.test(u)) score += 4
     else if (/-(md|720)/i.test(u)) score += 2
     else if (/-(sd|360|480)/i.test(u)) score += 1
     return { u, score }
@@ -146,7 +165,7 @@ interface CaptionResponse {
 
 async function tryApiFallback(detailPath: string): Promise<string | null> {
   try {
-    const detailRes = await fetch(
+    const detailRes = await fetchWithTimeout(
       `${API_BASE}/wefeed-h5api-bff/detail?detailPath=${detailPath}`,
       { headers: baseHeaders() },
     )
@@ -166,7 +185,7 @@ async function tryApiFallback(detailPath: string): Promise<string | null> {
     ]
 
     for (const src of sources) {
-      const capRes = await fetch(
+      const capRes = await fetchWithTimeout(
         `${API_BASE}/wefeed-h5api-bff/subject/caption?format=${src.format}&id=${src.id}&subjectId=${subjectId}&detailPath=${detailPath}`,
         { headers: { ...baseHeaders(), 'X-Client-Token': generateClientToken() } },
       )
@@ -225,7 +244,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const year = typeof yearParam === 'string' ? yearParam.trim() : ''
 
-  // 1. Search the full MovieBox catalog by title (covers everything, not just the homepage).
   let detailPath: string | null = null
   let matchedTitle: string | null = null
 
@@ -238,7 +256,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     detailPath = detail?.subject?.detailPath || null
   }
 
-  // 2. Resolve a playable/direct URL for the matched detail page.
   if (detailPath) {
     const pageUrl = `${MOVIEBOX_BASE}/moviedetail/${detailPath}`
     const pageHtml = await fetchHtml(pageUrl)
@@ -254,7 +271,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 3. Legacy caption-API fallback.
     const apiUrl = await tryApiFallback(detailPath)
     if (apiUrl) {
       return res.json({
